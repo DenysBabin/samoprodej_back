@@ -1,0 +1,8 @@
+security:
+  jwt:
+    secret: "CHANGE_ME_TO_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS"
+    access-ttl-minutes: 30
+
+spring:
+  profiles:
+    active: dev
