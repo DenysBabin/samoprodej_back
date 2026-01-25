@@ -16,6 +16,9 @@ public class DataInitializer {
         // (admin user,
         // mock property,
         // atd...)
-        return args -> {};
+        return args -> {
+            System.out.println("Initializing creation of mock data...");
+            System.out.println("No data was added");
+        };
     }
 }
