@@ -1,0 +1,17 @@
+services:
+  db:
+    image: postgres
+    restart: always
+    shm_size: 128mb
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: devDB
+      POSTGRES_PASSWORD: devPass
+      POSTGRES_DB: samoprodej
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
