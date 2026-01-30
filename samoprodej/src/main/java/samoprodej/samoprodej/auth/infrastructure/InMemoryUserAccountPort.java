@@ -2,7 +2,6 @@ package samoprodej.samoprodej.auth.infrastructure;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
-import samoprodej.auth.domain.*;
 import samoprodej.samoprodej.auth.domain.AuthUser;
 import samoprodej.samoprodej.auth.domain.UserAccountPort;
 
