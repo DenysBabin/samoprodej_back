@@ -1,4 +1,4 @@
-package samoprodej.auth.security;
+package samoprodej.samoprodej.auth.security;
 
 import org.springframework.context.annotation.*;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;

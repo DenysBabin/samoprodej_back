@@ -1,4 +1,4 @@
-package samoprodej.auth.domain;
+package samoprodej.samoprodej.auth.domain;
 
 import java.util.Optional;
 

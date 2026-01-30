@@ -1,11 +1,11 @@
-package samoprodej.auth.service;
+package samoprodej.samoprodej.auth.service;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import samoprodej.auth.DTO.AuthResponse;
-import samoprodej.auth.DTO.RegisterRequest;
-import samoprodej.auth.domain.AuthUser;
-import samoprodej.auth.domain.UserAccountPort;
-import samoprodej.auth.security.JwtService;
+import samoprodej.samoprodej.auth.DTO.AuthResponse;
+import samoprodej.samoprodej.auth.DTO.RegisterRequest;
+import samoprodej.samoprodej.auth.domain.AuthUser;
+import samoprodej.samoprodej.auth.domain.UserAccountPort;
+import samoprodej.samoprodej.auth.security.JwtService;
 
 @Service
 public class RegisterService {

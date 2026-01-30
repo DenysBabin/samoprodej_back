@@ -1,4 +1,4 @@
-package samoprodej.auth.security;
+package samoprodej.samoprodej.auth.security;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;

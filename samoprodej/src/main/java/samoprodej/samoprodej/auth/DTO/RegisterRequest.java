@@ -1,4 +1,4 @@
-package samoprodej.auth.DTO;
+package samoprodej.samoprodej.auth.DTO;
 
 
 import jakarta.validation.constraints.Email;

@@ -1,13 +1,13 @@
-package samoprodej.auth.api;
+package samoprodej.samoprodej.auth.api;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import samoprodej.auth.DTO.AuthResponse;
-import samoprodej.auth.DTO.LoginRequest;
-import samoprodej.auth.DTO.RegisterRequest;
-import samoprodej.auth.service.LoginService;
-import samoprodej.auth.service.RegisterService;
+import samoprodej.samoprodej.auth.DTO.AuthResponse;
+import samoprodej.samoprodej.auth.DTO.LoginRequest;
+import samoprodej.samoprodej.auth.DTO.RegisterRequest;
+import samoprodej.samoprodej.auth.service.LoginService;
+import samoprodej.samoprodej.auth.service.RegisterService;
 
 @RestController
 @RequestMapping("/auth")

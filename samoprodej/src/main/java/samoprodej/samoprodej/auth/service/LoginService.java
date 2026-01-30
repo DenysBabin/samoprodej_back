@@ -1,13 +1,13 @@
-package samoprodej.auth.service;
+package samoprodej.samoprodej.auth.service;
 
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import samoprodej.auth.DTO.AuthResponse;
-import samoprodej.auth.DTO.LoginRequest;
-import samoprodej.auth.domain.AuthUser;
-import samoprodej.auth.domain.UserAccountPort;
-import samoprodej.auth.security.JwtService;
+import samoprodej.samoprodej.auth.DTO.AuthResponse;
+import samoprodej.samoprodej.auth.DTO.LoginRequest;
+import samoprodej.samoprodej.auth.domain.AuthUser;
+import samoprodej.samoprodej.auth.domain.UserAccountPort;
+import samoprodej.samoprodej.auth.security.JwtService;
 
 @Service
 public class LoginService {
