@@ -1,46 +1,39 @@
 package samoprodej.samoprodej.auth.service;
-import org.springframework.stereotype.Service;
+
+
+import jakarta.transaction.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import samoprodej.samoprodej.auth.DTO.AuthResponse;
+import org.springframework.stereotype.Service;
+import samoprodej.samoprodej.Entity.User;
+import samoprodej.samoprodej.Enums.AuthProvider;
+import samoprodej.samoprodej.Repository.UserRepository;
 import samoprodej.samoprodej.auth.DTO.RegisterRequest;
-import samoprodej.samoprodej.auth.domain.AuthUser;
-import samoprodej.samoprodej.auth.domain.UserAccountPort;
-import samoprodej.samoprodej.auth.security.JwtService;
 
 @Service
 public class RegisterService {
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    private final UserAccountPort users;
-    private final PasswordEncoder encoder;
-    private final JwtService jwt;
-
-    public RegisterService(UserAccountPort users, PasswordEncoder encoder, JwtService jwt) {
-        this.users = users;
-        this.encoder = encoder;
-        this.jwt = jwt;
+    public RegisterService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
-    public AuthResponse register(RegisterRequest req) {
-        String email = normalize(req.email());
+    @Transactional
+    public void register(RegisterRequest req) {
+        String email = req.email().trim().toLowerCase();
 
-        if (users.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email already exists");
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("Email already in use");
         }
 
-        String hash = encoder.encode(req.password());
+        String hash = passwordEncoder.encode(req.password());
 
-        AuthUser created = users.create(email, hash);
+        User user = new User();
+        user.setEmail(email);
+        user.setPasswordHash(hash);      // <-- подставьте реальное имя поля/сеттера
+        user.setAuthProvider(AuthProvider.LOCAL); // если поле есть
 
-        if (!created.enabled()) {
-            throw new IllegalStateException("User disabled");
-        }
-
-        String token = jwt.issue(created.email(), created.role());
-        return new AuthResponse(token);
-    }
-
-    private String normalize(String email) {
-        return email.trim().toLowerCase();
+        userRepository.save(user);
     }
 }
-
