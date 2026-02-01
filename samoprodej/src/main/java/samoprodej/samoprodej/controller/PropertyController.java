@@ -34,8 +34,15 @@ public class PropertyController {
     }
 
     @GetMapping("/search")
-    public List<Property> search(@RequestParam String city) {
-        return service.searchByCity(city);
+    public List<Property> search(@RequestParam(required = false) String city,
+                                 @RequestParam(required = false) String address) {
+        if (address != null && !address.isEmpty()) {
+            return service.searchByAddress(address);
+        }
+        if (city != null && !city.isEmpty()) {
+            return service.searchByCity(city);
+        }
+        return service.getAllProperties();
     }
 
     @PostMapping
@@ -43,7 +50,6 @@ public class PropertyController {
         Property created = service.createProperty(property);
         return ResponseEntity.ok(created);
     }
-
 
     @PutMapping("/{id}")
     public ResponseEntity<Property> update(@PathVariable UUID id,

@@ -1,22 +1,29 @@
 package samoprodej.samoprodej.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UuidGenerator;
-import samoprodej.samoprodej.enums.PropertyStatus;
+import samoprodej.samoprodej.enums.ParkingType;
 import samoprodej.samoprodej.enums.PropertyType;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "properties")
-@SQLDelete(sql = "UPDATE properties SET deleted_at = CURRENT_TIMESTAMP, status = 'ARCHIVED' WHERE id = ?")
+@Getter
+@Setter
+@NoArgsConstructor
+@SQLDelete(sql = "UPDATE properties SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
 @SQLRestriction("deleted_at IS NULL")
 public class Property {
 
@@ -24,50 +31,101 @@ public class Property {
     @UuidGenerator
     private UUID id;
 
-    @NotNull(message = "Owner ID is required")
-    @Column(name = "owner_id", nullable = false)
-    private UUID ownerId;
 
-    @NotNull(message = "Type is required")
+    @NotNull
+    @Column(name = "owner_user_id", nullable = false, updatable = false)
+    private UUID ownerUserId;
+
+    @NotNull
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 32)
+    @Column(nullable = false, length = 16, updatable = false)
     private PropertyType type;
 
-    @NotNull(message = "Status is required")
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 32)
-    private PropertyStatus status;
+    @NotBlank
+    @Size(max = 2)
+    @ColumnDefault("'CZ'")
+    @Column(nullable = false, length = 2, updatable = false)
+    private String country = "CZ";
+
 
     @NotBlank
-    @Size(min = 2, max = 2)
-    @Column(nullable = false, length = 2)
-    private String country;
-
-    @NotBlank(message = "City is required")
     @Size(max = 128)
-    @Column(name = "city_raw", nullable = false, length = 128)
-    private String cityRaw;
+    @Column(nullable = false, length = 128)
+    private String city;
 
-    @Column(name = "city_norm", nullable = false, length = 128)
-    private String cityNorm;
+    @Size(max = 128)
+    @Column(length = 128)
+    private String district;
 
-    @NotBlank(message = "Street is required")
     @Size(max = 255)
-    @Column(name = "street_raw", nullable = false, length = 255)
-    private String streetRaw;
+    @Column(length = 255)
+    private String street;
 
-    @Column(name = "street_norm", nullable = false, length = 255)
-    private String streetNorm;
+    @Size(max = 32)
+    @Column(name = "house_number", length = 32)
+    private String houseNumber;
 
-    @NotNull(message = "Size is required")
-    @Min(value = 1)
-    @Column(name = "size_m2", nullable = false)
-    private Integer sizeM2;
+    @NotBlank
+    @Size(max = 512)
+    @Column(name = "address_text", nullable = false, length = 512)
+    private String addressText;
 
-    @NotNull(message = "Rooms count is required")
-    @Min(value = 1)
-    @Column(nullable = false)
-    private Integer rooms;
+    @Column(precision = 10, scale = 7)
+    private BigDecimal lat;
+
+    @Column(precision = 10, scale = 7)
+    private BigDecimal lng;
+
+
+    @Size(max = 16)
+    @Column(length = 16)
+    private String dispozice;
+
+    @Column(name = "rooms_count")
+    private Integer roomsCount;
+
+    private Integer floor;
+
+    @Column(name = "total_floors")
+    private Integer totalFloors;
+
+    @NotNull
+    @Column(name = "area_m2", nullable = false, precision = 10, scale = 2)
+    private BigDecimal areaM2;
+
+    @Column(name = "balcony_area_m2", precision = 10, scale = 2)
+    private BigDecimal balconyAreaM2;
+
+    @Column(name = "cellar_area_m2", precision = 10, scale = 2)
+    private BigDecimal cellarAreaM2;
+
+    @Column(name = "has_balcony", nullable = false)
+    @ColumnDefault("false")
+    private Boolean hasBalcony = false;
+
+    @Column(name = "has_terrace", nullable = false)
+    @ColumnDefault("false")
+    private Boolean hasTerrace = false;
+
+    @Column(name = "has_loggia", nullable = false)
+    @ColumnDefault("false")
+    private Boolean hasLoggia = false;
+
+    @Column(name = "has_garden", nullable = false)
+    @ColumnDefault("false")
+    private Boolean hasGarden = false;
+
+    @Column(name = "has_cellar", nullable = false)
+    @ColumnDefault("false")
+    private Boolean hasCellar = false;
+
+    @Column(name = "has_elevator", nullable = false)
+    @ColumnDefault("false")
+    private Boolean hasElevator = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "parking_type", length = 32)
+    private ParkingType parkingType;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -78,59 +136,21 @@ public class Property {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    public Property() {}
-
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        if (this.status == null) {
-            this.status = PropertyStatus.DRAFT;
-        }
-        if (this.country == null) {
-            this.country = "CZ";
-        }
+        if (this.country == null) this.country = "CZ";
+        if (this.hasBalcony == null) this.hasBalcony = false;
+        if (this.hasTerrace == null) this.hasTerrace = false;
+        if (this.hasLoggia == null) this.hasLoggia = false;
+        if (this.hasGarden == null) this.hasGarden = false;
+        if (this.hasCellar == null) this.hasCellar = false;
+        if (this.hasElevator == null) this.hasElevator = false;
     }
 
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
-
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-
-    public UUID getOwnerId() { return ownerId; }
-    public void setOwnerId(UUID ownerId) { this.ownerId = ownerId; }
-
-    public PropertyType getType() { return type; }
-    public void setType(PropertyType type) { this.type = type; }
-
-    public PropertyStatus getStatus() { return status; }
-    public void setStatus(PropertyStatus status) { this.status = status; }
-
-    public String getCountry() { return country; }
-    public void setCountry(String country) { this.country = country; }
-
-    public String getCityRaw() { return cityRaw; }
-    public void setCityRaw(String cityRaw) { this.cityRaw = cityRaw; }
-
-    public String getCityNorm() { return cityNorm; }
-    public void setCityNorm(String cityNorm) { this.cityNorm = cityNorm; }
-
-    public String getStreetRaw() { return streetRaw; }
-    public void setStreetRaw(String streetRaw) { this.streetRaw = streetRaw; }
-
-    public String getStreetNorm() { return streetNorm; }
-    public void setStreetNorm(String streetNorm) { this.streetNorm = streetNorm; }
-
-    public Integer getSizeM2() { return sizeM2; }
-    public void setSizeM2(Integer sizeM2) { this.sizeM2 = sizeM2; }
-
-    public Integer getRooms() { return rooms; }
-    public void setRooms(Integer rooms) { this.rooms = rooms; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public LocalDateTime getDeletedAt() { return deletedAt; }
 }
