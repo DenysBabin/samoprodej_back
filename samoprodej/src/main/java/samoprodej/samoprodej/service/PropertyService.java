@@ -2,7 +2,6 @@ package samoprodej.samoprodej.service;
 
 import org.springframework.stereotype.Service;
 import samoprodej.samoprodej.entity.Property;
-import samoprodej.samoprodej.enums.PropertyStatus;
 import samoprodej.samoprodej.repository.PropertyRepository;
 
 import java.util.List;
@@ -18,12 +17,9 @@ public class PropertyService {
     }
 
     public Property createProperty(Property property) {
-        normalizeAddress(property);
-
-        if (property.getStatus() == null) {
-            property.setStatus(PropertyStatus.DRAFT);
+        if (property.getAddressText() == null || property.getAddressText().isEmpty()) {
+            generateAddressText(property);
         }
-
         return repository.save(property);
     }
 
@@ -37,23 +33,46 @@ public class PropertyService {
     }
 
     public List<Property> searchByCity(String city) {
-        String normCity = city.trim().toLowerCase();
-        return repository.findByCityNormContainingIgnoreCase(normCity);
+        return repository.findByCityContainingIgnoreCase(city.trim());
+    }
+
+    public List<Property> searchByAddress(String fragment) {
+        return repository.findByAddressTextContainingIgnoreCase(fragment.trim());
     }
 
     public Property updateProperty(UUID id, Property updatedDetails) {
         Property existing = getPropertyById(id);
 
-        existing.setType(updatedDetails.getType());
-        existing.setStatus(updatedDetails.getStatus());
-        existing.setCountry(updatedDetails.getCountry());
-        existing.setSizeM2(updatedDetails.getSizeM2());
-        existing.setRooms(updatedDetails.getRooms());
+        existing.setCity(updatedDetails.getCity());
+        existing.setDistrict(updatedDetails.getDistrict());
+        existing.setStreet(updatedDetails.getStreet());
+        existing.setHouseNumber(updatedDetails.getHouseNumber());
 
-        existing.setCityRaw(updatedDetails.getCityRaw());
-        existing.setStreetRaw(updatedDetails.getStreetRaw());
+        if (updatedDetails.getAddressText() != null && !updatedDetails.getAddressText().isEmpty()) {
+            existing.setAddressText(updatedDetails.getAddressText());
+        } else {
+            generateAddressText(existing);
+        }
 
-        normalizeAddress(existing);
+        existing.setLat(updatedDetails.getLat());
+        existing.setLng(updatedDetails.getLng());
+
+        existing.setDispozice(updatedDetails.getDispozice());
+        existing.setRoomsCount(updatedDetails.getRoomsCount());
+        existing.setFloor(updatedDetails.getFloor());
+        existing.setTotalFloors(updatedDetails.getTotalFloors());
+        existing.setAreaM2(updatedDetails.getAreaM2());
+        existing.setBalconyAreaM2(updatedDetails.getBalconyAreaM2());
+        existing.setCellarAreaM2(updatedDetails.getCellarAreaM2());
+
+        existing.setHasBalcony(updatedDetails.getHasBalcony());
+        existing.setHasTerrace(updatedDetails.getHasTerrace());
+        existing.setHasLoggia(updatedDetails.getHasLoggia());
+        existing.setHasGarden(updatedDetails.getHasGarden());
+        existing.setHasCellar(updatedDetails.getHasCellar());
+        existing.setHasElevator(updatedDetails.getHasElevator());
+        existing.setParkingType(updatedDetails.getParkingType());
+
 
         return repository.save(existing);
     }
@@ -62,12 +81,16 @@ public class PropertyService {
         repository.deleteById(id);
     }
 
-    private void normalizeAddress(Property property) {
-        if (property.getCityRaw() != null) {
-            property.setCityNorm(property.getCityRaw().trim().toLowerCase());
+    private void generateAddressText(Property p) {
+        StringBuilder sb = new StringBuilder();
+        if (p.getStreet() != null && !p.getStreet().isEmpty()) {
+            sb.append(p.getStreet());
+            if (p.getHouseNumber() != null) sb.append(" ").append(p.getHouseNumber());
         }
-        if (property.getStreetRaw() != null) {
-            property.setStreetNorm(property.getStreetRaw().trim().toLowerCase());
+        if (p.getCity() != null) {
+            if (!sb.isEmpty()) sb.append(", ");
+            sb.append(p.getCity());
         }
+        p.setAddressText(sb.toString());
     }
 }

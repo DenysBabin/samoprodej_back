@@ -6,6 +6,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import samoprodej.samoprodej.enums.AuthProvider;
 import samoprodej.samoprodej.enums.Language;
+import samoprodej.samoprodej.enums.Role;
 import samoprodej.samoprodej.enums.UserStatus;
 
 import java.time.LocalDateTime;
@@ -23,9 +24,12 @@ public class User {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    // === Main Fields ===
-    @Column(nullable = false, length = 16)
     @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, length = 16)
+    private Role role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
     private UserStatus status;
 
     @CreationTimestamp
@@ -39,37 +43,35 @@ public class User {
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
-    @Column(name = "display_name")
-    private String displayName;
-
-    @Column(length = 32, unique = true)
+    @Column(length = 32)
     private String phone;
 
-    @Column(length = 320, unique = true)
+    @Column(length = 255)
     private String email;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "preferred_lang", length = 2) // cs, ru, en
-    private Language preferredLang = Language.CS; // Default: Czech
-
-    // === Auth & Security Fields ===
-    private String login;
-
-    @Column(name = "password_hash", length = 255)
+    @Column(name = "password_hash", length = 320)
     private String passwordHash;
+
+    @Column(name = "password_updated_at")
+    private LocalDateTime passwordUpdatedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "auth_provider", nullable = false, length = 16)
     private AuthProvider authProvider;
 
-    // === Verification Fields ===
-    @Column(name = "email_verified_at")
-    private LocalDateTime emailVerifiedAt;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "preferred_lang", length = 8, nullable = false)
+    private Language preferredLang = Language.CS;
 
-    @Column(name = "phone_verified_at")
-    private LocalDateTime phoneVerifiedAt;
+    @Column(name = "first_name", length = 64)
+    private String firstName;
+
+    @Column(name = "last_name", length = 64)
+    private String lastName;
+
+    @Column(name = "avatar_url")
+    private String avatarUrl;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
-
 }
