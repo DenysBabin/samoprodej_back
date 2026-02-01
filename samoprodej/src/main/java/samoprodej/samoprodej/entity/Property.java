@@ -8,8 +8,8 @@ import jakarta.validation.constraints.Size;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UuidGenerator;
-import samoprodej.samoprodej.entity.enums.PropertyStatus;
-import samoprodej.samoprodej.entity.enums.PropertyType;
+import samoprodej.samoprodej.enums.PropertyStatus;
+import samoprodej.samoprodej.enums.PropertyType;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

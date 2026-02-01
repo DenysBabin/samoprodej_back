@@ -1,8 +1,8 @@
-package samoprodej.samoprodej.Repository;
+package samoprodej.samoprodej.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import samoprodej.samoprodej.Entity.User;
+import samoprodej.samoprodej.entity.User;
 import java.util.Optional;
 import java.util.UUID;
 

@@ -3,8 +3,8 @@ package samoprodej.samoprodej.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import samoprodej.samoprodej.entity.Property;
-import samoprodej.samoprodej.entity.enums.PropertyStatus;
-import samoprodej.samoprodej.entity.enums.PropertyType;
+import samoprodej.samoprodej.enums.PropertyStatus;
+import samoprodej.samoprodej.enums.PropertyType;
 
 import java.util.List;
 import java.util.UUID;

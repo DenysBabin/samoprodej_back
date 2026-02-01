@@ -1,4 +1,4 @@
-package samoprodej.samoprodej.entity.enums;
+package samoprodej.samoprodej.enums;
 
 public enum PropertyStatus {
     DRAFT,

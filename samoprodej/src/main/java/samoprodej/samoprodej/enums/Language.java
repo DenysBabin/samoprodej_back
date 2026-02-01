@@ -1,4 +1,4 @@
-package samoprodej.samoprodej.Enums;
+package samoprodej.samoprodej.enums;
 
 public enum Language {
     CS,

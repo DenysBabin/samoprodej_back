@@ -2,7 +2,7 @@ package samoprodej.samoprodej.service;
 
 import org.springframework.stereotype.Service;
 import samoprodej.samoprodej.entity.Property;
-import samoprodej.samoprodej.entity.enums.PropertyStatus;
+import samoprodej.samoprodej.enums.PropertyStatus;
 import samoprodej.samoprodej.repository.PropertyRepository;
 
 import java.util.List;
