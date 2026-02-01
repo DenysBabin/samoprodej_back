@@ -1,4 +1,4 @@
-package samoprodej.samoprodej.entity;
+package samoprodej.samoprodej.Entity;
 
 import jakarta.persistence.*;
 import lombok.*;
