@@ -89,6 +89,9 @@ public class Listing {
         Instant now = Instant.now();
         createdAt = now;
         updatedAt = now;
+        paymentStatus=PaymentStatus.UNPAID;
+        status=ListingStatus.DRAFT;
+
         if (status == null) status = ListingStatus.DRAFT;
     }
 
@@ -101,4 +104,12 @@ public class Listing {
         status = ListingStatus.PUBLISHED;
         publishedAt = Instant.now();
     }
+
+    public Listing(Property property, User owner, Integer rentMonthly) {
+        this.property = property;
+        this.owner = owner;
+        this.rentMonthly = rentMonthly;
+        this.status = ListingStatus.DRAFT;
+    }
+
 }
