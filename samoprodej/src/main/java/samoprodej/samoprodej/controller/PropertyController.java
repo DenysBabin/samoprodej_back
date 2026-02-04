@@ -3,7 +3,8 @@ package samoprodej.samoprodej.controller;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import samoprodej.samoprodej.entity.Property;
+import samoprodej.samoprodej.dto.PropertyDTO;
+import samoprodej.samoprodej.dto.PropertyMediaDTO; // NEW
 import samoprodej.samoprodej.service.PropertyService;
 
 import java.util.List;
@@ -20,12 +21,12 @@ public class PropertyController {
     }
 
     @GetMapping
-    public List<Property> getAll() {
+    public List<PropertyDTO> getAll() {
         return service.getAllProperties();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Property> getById(@PathVariable UUID id) {
+    public ResponseEntity<PropertyDTO> getById(@PathVariable UUID id) {
         try {
             return ResponseEntity.ok(service.getPropertyById(id));
         } catch (RuntimeException e) {
@@ -34,28 +35,20 @@ public class PropertyController {
     }
 
     @GetMapping("/search")
-    public List<Property> search(@RequestParam(required = false) String city,
-                                 @RequestParam(required = false) String address) {
-        if (address != null && !address.isEmpty()) {
-            return service.searchByAddress(address);
-        }
-        if (city != null && !city.isEmpty()) {
-            return service.searchByCity(city);
-        }
-        return service.getAllProperties();
+    public List<PropertyDTO> search(@RequestParam String city) {
+        return service.searchByCity(city);
     }
 
     @PostMapping
-    public ResponseEntity<Property> create(@Valid @RequestBody Property property) {
-        Property created = service.createProperty(property);
-        return ResponseEntity.ok(created);
+    public ResponseEntity<PropertyDTO> create(@Valid @RequestBody PropertyDTO dto) {
+        return ResponseEntity.ok(service.createProperty(dto));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Property> update(@PathVariable UUID id,
-                                           @Valid @RequestBody Property property) {
+    public ResponseEntity<PropertyDTO> update(@PathVariable UUID id,
+                                              @Valid @RequestBody PropertyDTO dto) {
         try {
-            return ResponseEntity.ok(service.updateProperty(id, property));
+            return ResponseEntity.ok(service.updateProperty(id, dto));
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
@@ -64,6 +57,31 @@ public class PropertyController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.deleteProperty(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/media")
+    public ResponseEntity<PropertyMediaDTO> addMedia(@PathVariable UUID id,
+                                                     @Valid @RequestBody PropertyMediaDTO mediaDto) {
+        try {
+            return ResponseEntity.ok(service.addMedia(id, mediaDto));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/{id}/media")
+    public ResponseEntity<List<PropertyMediaDTO>> getMedia(@PathVariable UUID id) {
+        try {
+            return ResponseEntity.ok(service.getMediaForProperty(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @DeleteMapping("/media/{mediaId}")
+    public ResponseEntity<Void> deleteMedia(@PathVariable UUID mediaId) {
+        service.deleteMedia(mediaId);
         return ResponseEntity.noContent().build();
     }
 }

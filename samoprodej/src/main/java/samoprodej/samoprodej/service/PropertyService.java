@@ -1,84 +1,115 @@
 package samoprodej.samoprodej.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import samoprodej.samoprodej.dto.PropertyDTO;
+import samoprodej.samoprodej.dto.PropertyMediaDTO;
 import samoprodej.samoprodej.entity.Property;
+import samoprodej.samoprodej.entity.PropertyMedia;
+import samoprodej.samoprodej.mapper.PropertyMapper;
+import samoprodej.samoprodej.mapper.PropertyMediaMapper;
+import samoprodej.samoprodej.repository.PropertyMediaRepository;
 import samoprodej.samoprodej.repository.PropertyRepository;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class PropertyService {
 
     private final PropertyRepository repository;
+    private final PropertyMediaRepository mediaRepository;
+    private final PropertyMapper mapper;
+    private final PropertyMediaMapper mediaMapper;
 
-    public PropertyService(PropertyRepository repository) {
+    public PropertyService(PropertyRepository repository,
+                           PropertyMediaRepository mediaRepository,
+                           PropertyMapper mapper,
+                           PropertyMediaMapper mediaMapper) {
         this.repository = repository;
+        this.mediaRepository = mediaRepository;
+        this.mapper = mapper;
+        this.mediaMapper = mediaMapper;
     }
 
-    public Property createProperty(Property property) {
+    public PropertyDTO createProperty(PropertyDTO dto) {
+        log.info("Creating property for owner: {}", dto.getOwnerUserId());
+        Property property = mapper.toEntity(dto);
+
         if (property.getAddressText() == null || property.getAddressText().isEmpty()) {
             generateAddressText(property);
         }
-        return repository.save(property);
+
+        Property saved = repository.save(property);
+        log.info("Property created with ID: {}", saved.getId());
+
+        return mapper.toDto(saved);
     }
 
-    public List<Property> getAllProperties() {
-        return repository.findAll();
+    public List<PropertyDTO> getAllProperties() {
+        return repository.findAll().stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
     }
 
-    public Property getPropertyById(UUID id) {
-        return repository.findById(id)
+    public PropertyDTO getPropertyById(UUID id) {
+        Property property = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Property not found with id: " + id));
+        return mapper.toDto(property);
     }
 
-    public List<Property> searchByCity(String city) {
-        return repository.findByCityContainingIgnoreCase(city.trim());
+    public List<PropertyDTO> searchByCity(String city) {
+        return repository.findByCityContainingIgnoreCase(city.trim()).stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
     }
 
-    public List<Property> searchByAddress(String fragment) {
-        return repository.findByAddressTextContainingIgnoreCase(fragment.trim());
-    }
+    public PropertyDTO updateProperty(UUID id, PropertyDTO dto) {
+        log.info("Updating property ID: {}", id);
+        Property existing = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Property not found"));
 
-    public Property updateProperty(UUID id, Property updatedDetails) {
-        Property existing = getPropertyById(id);
+        mapper.updateEntityFromDto(dto, existing);
 
-        existing.setCity(updatedDetails.getCity());
-        existing.setDistrict(updatedDetails.getDistrict());
-        existing.setStreet(updatedDetails.getStreet());
-        existing.setHouseNumber(updatedDetails.getHouseNumber());
-
-        if (updatedDetails.getAddressText() != null && !updatedDetails.getAddressText().isEmpty()) {
-            existing.setAddressText(updatedDetails.getAddressText());
-        } else {
+        if (existing.getAddressText() == null || existing.getAddressText().isEmpty()) {
             generateAddressText(existing);
         }
 
-        existing.setLat(updatedDetails.getLat());
-        existing.setLng(updatedDetails.getLng());
-
-        existing.setDispozice(updatedDetails.getDispozice());
-        existing.setRoomsCount(updatedDetails.getRoomsCount());
-        existing.setFloor(updatedDetails.getFloor());
-        existing.setTotalFloors(updatedDetails.getTotalFloors());
-        existing.setAreaM2(updatedDetails.getAreaM2());
-        existing.setBalconyAreaM2(updatedDetails.getBalconyAreaM2());
-        existing.setCellarAreaM2(updatedDetails.getCellarAreaM2());
-
-        existing.setHasBalcony(updatedDetails.getHasBalcony());
-        existing.setHasTerrace(updatedDetails.getHasTerrace());
-        existing.setHasLoggia(updatedDetails.getHasLoggia());
-        existing.setHasGarden(updatedDetails.getHasGarden());
-        existing.setHasCellar(updatedDetails.getHasCellar());
-        existing.setHasElevator(updatedDetails.getHasElevator());
-        existing.setParkingType(updatedDetails.getParkingType());
-
-
-        return repository.save(existing);
+        Property updated = repository.save(existing);
+        return mapper.toDto(updated);
     }
 
     public void deleteProperty(UUID id) {
+        log.warn("Deleting property ID: {}", id);
         repository.deleteById(id);
+    }
+
+    public PropertyMediaDTO addMedia(UUID propertyId, PropertyMediaDTO mediaDto) {
+        log.info("Adding media to property ID: {}", propertyId);
+
+        Property property = repository.findById(propertyId)
+                .orElseThrow(() -> new RuntimeException("Property not found"));
+
+        PropertyMedia media = mediaMapper.toEntity(mediaDto, property);
+        PropertyMedia saved = mediaRepository.save(media);
+
+        return mediaMapper.toDto(saved);
+    }
+
+    public List<PropertyMediaDTO> getMediaForProperty(UUID propertyId) {
+        if (!repository.existsById(propertyId)) {
+            throw new RuntimeException("Property not found");
+        }
+        return mediaRepository.findByPropertyIdOrderBySortOrderAsc(propertyId).stream()
+                .map(mediaMapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    public void deleteMedia(UUID mediaId) {
+        log.warn("Deleting media ID: {}", mediaId);
+        mediaRepository.deleteById(mediaId);
     }
 
     private void generateAddressText(Property p) {
