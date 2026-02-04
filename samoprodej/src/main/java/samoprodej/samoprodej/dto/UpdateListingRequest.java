@@ -4,7 +4,7 @@ import jakarta.validation.constraints.Positive;
 import samoprodej.samoprodej.enums.ListingStatus;
 import samoprodej.samoprodej.enums.PaymentStatus;
 
-public record PatchListingRequest(
+public record UpdateListingRequest(
         ListingStatus status,
         PaymentStatus paymentStatus,
         @Positive Integer rentMonthly,

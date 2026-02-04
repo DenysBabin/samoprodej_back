@@ -19,6 +19,8 @@ public record ListingResponse(
         Boolean petsAllowed,
         Boolean smokingAllowed,
         Boolean childrenAllowed,
-        Short maxTenants
+        Short maxTenants,
+        Instant createdAt,
+        Instant updatedAt
 ) {
 }
