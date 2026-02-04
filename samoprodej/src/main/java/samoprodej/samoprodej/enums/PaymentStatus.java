@@ -1,7 +1,10 @@
 package samoprodej.samoprodej.enums;
 
 public enum PaymentStatus {
-    UNPAID,
-    PAID,
-    EXPIRED
+    CREATED,
+    PENDING,
+    SUCCEDED,
+    FAILED,
+    CANCELED,
+    REFUNDED
 }
