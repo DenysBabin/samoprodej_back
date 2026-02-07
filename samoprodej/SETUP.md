@@ -305,16 +305,22 @@ samoprodej/
 │   ├── main/
 │   │   ├── java/
 │   │   │   └── samoprodej/samoprodej/
-│   │   │       ├── controller/     # REST контроллеры
-│   │   │       ├── service/        # Бизнес-логика
-│   │   │       ├── dto/           # Data Transfer Objects
+│   │   │       ├── config/        # Конфигурация (Security, FileStorage, DataInitializer)
+│   │   │       ├── controller/    # REST контроллеры
+│   │   │       ├── dto/           # Data Transfer Objects (по доменам)
+│   │   │       │   ├── user/
+│   │   │       │   ├── property/
+│   │   │       │   ├── propertymedia/
+│   │   │       │   └── listing/
+│   │   │       ├── Entity/        # JPA сущности
+│   │   │       ├── enums/         # Перечисления
 │   │   │       ├── mapper/        # Преобразование Entity ↔ DTO
-│   │   │       ├── Entity/       # JPA сущности
-│   │   │       ├── Repository/   # JPA репозитории
-│   │   │       └── enums/         # Перечисления
+│   │   │       ├── Repository/    # JPA репозитории
+│   │   │       └── service/       # Бизнес-логика
 │   │   └── resources/
-│   │       └── application.properties  # Конфигурация
+│   │       └── application.properties  # Конфигурация + настройки file.storage
 │   └── test/                      # Тесты
+├── uploads/                       # Хранилище загруженных медиа (создаётся при первом upload)
 ├── docker-compose.yml             # Конфигурация Docker
 ├── pom.xml                        # Maven конфигурация
 └── mvnw                           # Maven Wrapper
@@ -374,8 +380,9 @@ http://localhost:8080
 После успешного запуска проекта:
 
 1. Изучите API документацию: `API_DOCUMENTATION.md`
-2. Протестируйте эндпоинты через Postman или curl
-3. Проверьте созданные тестовые данные (пользователи создаются автоматически при старте)
+2. Изучите архитектуру и руководство по разработке: `ARCHITECTURE.md`
+3. Протестируйте эндпоинты через Postman или curl
+4. Проверьте созданные тестовые данные (пользователи создаются автоматически при старте)
 
 ---
 

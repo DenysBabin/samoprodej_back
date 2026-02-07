@@ -298,34 +298,120 @@ DELETE /api/properties/{id}
 
 **Ответ:** `204 No Content` или `404 Not Found`
 
-#### 8. Добавление медиа к недвижимости
+---
+
+## Property Media API
+
+Медиа (фото и видео) привязаны к недвижимости. Поддерживается загрузка файлов и добавление по URL.
+
+### Базовый путь: `/api/properties/{id}/media`
+
+#### 1. Загрузка файла (Multipart)
+```http
+POST /api/properties/{id}/media/upload
+Content-Type: multipart/form-data
+
+file: (binary)
+type: PHOTO | VIDEO
+```
+
+**Параметры:**
+- `file` - файл (обязательный). Фото: до 10MB, видео: до 100MB (настраивается в application.properties)
+- `type` - обязательный: `PHOTO`, `VIDEO`
+
+**Ответ:** `200 OK` с `PropertyMediaResponse` или `404 Not Found`
+
+**Примечание:** Для фото автоматически генерируется превью (max 800x600).
+
+#### 2. Добавление медиа по URL
 ```http
 POST /api/properties/{id}/media
 Content-Type: application/json
 
 {
+  "type": "PHOTO",
   "url": "https://example.com/photo.jpg",
   "previewUrl": "https://example.com/preview.jpg",
-  "type": "PHOTO",
-  "sortOrder": 1
+  "sortOrder": 0
 }
 ```
 
-**Ответ:** `200 OK` с `PropertyMediaDTO` или `404 Not Found`
+**Валидация:**
+- `type` - обязательное: `PHOTO`, `VIDEO`
+- `url` - обязательное
+- `previewUrl` - опциональное
+- `sortOrder` - опциональное, >= 0 (если не указан - следующий по порядку)
 
-#### 9. Получение медиа недвижимости
+**Ответ:** `200 OK` с `PropertyMediaResponse` или `404 Not Found`
+
+#### 3. Получение медиа недвижимости
 ```http
 GET /api/properties/{id}/media
 ```
 
-**Ответ:** `200 OK` со списком `PropertyMediaDTO[]` или `404 Not Found`
+**Ответ:** `200 OK` со списком `PropertyMediaResponse[]` (отсортированы по sortOrder)
 
-#### 10. Удаление медиа
+#### 4. Изменение порядка медиа
 ```http
-DELETE /api/properties/media/{mediaId}
+PUT /api/properties/{id}/media/reorder
+Content-Type: application/json
+
+{
+  "mediaIds": ["uuid1", "uuid2", "uuid3"]
+}
 ```
 
+**Валидация:**
+- `mediaIds` - непустой список UUID всех медиа данной недвижимости в желаемом порядке
+
+**Ответ:** `200 OK` со списком `PropertyMediaResponse[]` или `400 Bad Request`
+
+#### 5. Обновление медиа (previewUrl, sortOrder)
+```http
+PATCH /api/properties/{id}/media/{mediaId}
+Content-Type: application/json
+
+{
+  "previewUrl": "https://example.com/new-preview.jpg",
+  "sortOrder": 1
+}
+```
+
+**Валидация:** Оба поля опциональные. `sortOrder` >= 0.
+
+**Ответ:** `200 OK` с `PropertyMediaResponse` или `404 Not Found`
+
+#### 6. Удаление медиа
+```http
+DELETE /api/properties/{id}/media/{mediaId}
+```
+
+**Действие:** Удаляет запись в БД и физические файлы (если были загружены).
+
 **Ответ:** `204 No Content` или `404 Not Found`
+
+### PropertyMediaResponse структура
+```json
+{
+  "id": "uuid",
+  "propertyId": "uuid",
+  "type": "PHOTO",
+  "url": "/uploads/properties/.../original.jpg",
+  "previewUrl": "/uploads/properties/.../preview.jpg",
+  "sortOrder": 0,
+  "createdAt": "2026-02-04T10:00:00Z"
+}
+```
+
+### Конфигурация хранения файлов (application.properties)
+```
+file.storage.path=uploads/properties
+file.storage.max-size-photo=10485760
+file.storage.max-size-video=104857600
+file.storage.preview.max-width=800
+file.storage.preview.max-height=600
+file.storage.max-media-per-property=50
+```
 
 ### PropertyResponse структура
 ```json
@@ -534,12 +620,25 @@ GET /api/listings/search/property?propertyId={uuid}
 ### Структура компонентов
 
 #### DTO (Data Transfer Objects)
+DTO организованы по доменам в подпапках `dto/`:
+
+```
+dto/
+├── user/           — UserResponse, CreateUserRequest, UpdateUserRequest, ChangePasswordRequest
+├── property/       — PropertyResponse, PropertyDTO, CreatePropertyRequest, UpdatePropertyRequest
+├── propertymedia/  — PropertyMediaResponse, PropertyMediaDTO, CreatePropertyMediaRequest, 
+│                     UpdatePropertyMediaRequest, ReorderMediaRequest
+└── listing/        — ListingResponse, CreateListingRequest, UpdateListingRequest, PatchListingRequest
+```
+
 Используются Java records для передачи данных между слоями:
 
 - **Create*Request** - для создания новых ресурсов (обязательные поля с валидацией)
 - **Update*Request** - для полного обновления (все поля опциональные)
 - **Patch*Request** - для частичного обновления (все поля опциональные)
 - **Response** - для ответов API (все поля только для чтения)
+
+Импорты: `samoprodej.samoprodej.dto.{domain}.{ClassName}` (например, `samoprodej.samoprodej.dto.propertymedia.PropertyMediaResponse`)
 
 #### Services
 Содержат бизнес-логику:
@@ -580,6 +679,7 @@ REST API эндпоинты:
 - **PaymentStatus**: `UNPAID`, `CREATED`, `PENDING`, `SUCCEDED`, `FAILED`, `CANCELED`, `REFUNDED`
 - **Role**: `TENANT`, `OWNER`, `ADMIN`
 - **PropertyType**: `APARTMENT`, `HOUSE`, `ROOM`, `COMMERCIAL`, `LAND`, `OTHER`
+- **MediaType**: `PHOTO`, `VIDEO`
 
 ---
 

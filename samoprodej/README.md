@@ -25,7 +25,8 @@ Spring Boot приложение для управления недвижимо�
 ## Документация
 
 - **[SETUP.md](SETUP.md)** - Подробная инструкция по настройке и запуску проекта локально
-- **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - Полная документация по API (User, Property, Listing)
+- **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - Полная документация по API (User, Property, Property Media, Listing)
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Архитектура проекта и руководство по добавлению новых сущностей
 
 ## Основные компоненты
 
@@ -33,15 +34,17 @@ Spring Boot приложение для управления недвижимо�
 
 - **User API**: `/api/users` - управление пользователями
 - **Property API**: `/api/properties` - управление недвижимостью
+- **Property Media API**: `/api/properties/{id}/media` - фото и видео недвижимости (загрузка, URL, сортировка)
 - **Listing API**: `/api/listings` - управление объявлениями об аренде
 
 ### Архитектура
 
 - **Controllers** - REST API эндпоинты
 - **Services** - бизнес-логика с транзакциями
-- **DTOs** - Java records для передачи данных
+- **DTOs** - Java records, организованы по доменам (user, property, propertymedia, listing)
 - **Mappers** - преобразование Entity ↔ DTO
 - **Repositories** - доступ к данным через JPA
+- **Config** - FileStorageConfig (хранение медиа), SecurityConfig
 
 ## Требования
 
