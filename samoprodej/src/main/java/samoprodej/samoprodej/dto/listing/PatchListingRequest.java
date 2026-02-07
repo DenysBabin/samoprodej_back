@@ -1,10 +1,10 @@
-package samoprodej.samoprodej.dto;
+package samoprodej.samoprodej.dto.listing;
 
 import jakarta.validation.constraints.Positive;
 import samoprodej.samoprodej.enums.ListingStatus;
 import samoprodej.samoprodej.enums.PaymentStatus;
 
-public record UpdateListingRequest(
+public record PatchListingRequest(
         ListingStatus status,
         PaymentStatus paymentStatus,
         @Positive Integer rentMonthly,

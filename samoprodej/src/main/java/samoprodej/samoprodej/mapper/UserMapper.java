@@ -1,9 +1,9 @@
 package samoprodej.samoprodej.mapper;
 
 import org.springframework.stereotype.Component;
-import samoprodej.samoprodej.dto.CreateUserRequest;
-import samoprodej.samoprodej.dto.UpdateUserRequest;
-import samoprodej.samoprodej.dto.UserResponse;
+import samoprodej.samoprodej.dto.user.CreateUserRequest;
+import samoprodej.samoprodej.dto.user.UpdateUserRequest;
+import samoprodej.samoprodej.dto.user.UserResponse;
 import samoprodej.samoprodej.entity.User;
 import samoprodej.samoprodej.enums.Language;
 import samoprodej.samoprodej.enums.UserStatus;

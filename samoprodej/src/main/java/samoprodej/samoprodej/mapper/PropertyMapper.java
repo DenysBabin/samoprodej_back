@@ -1,10 +1,10 @@
 package samoprodej.samoprodej.mapper;
 
 import org.springframework.stereotype.Component;
-import samoprodej.samoprodej.dto.CreatePropertyRequest;
-import samoprodej.samoprodej.dto.PropertyDTO;
-import samoprodej.samoprodej.dto.PropertyResponse;
-import samoprodej.samoprodej.dto.UpdatePropertyRequest;
+import samoprodej.samoprodej.dto.property.CreatePropertyRequest;
+import samoprodej.samoprodej.dto.property.PropertyDTO;
+import samoprodej.samoprodej.dto.property.PropertyResponse;
+import samoprodej.samoprodej.dto.property.UpdatePropertyRequest;
 import samoprodej.samoprodej.entity.Property;
 
 @Component

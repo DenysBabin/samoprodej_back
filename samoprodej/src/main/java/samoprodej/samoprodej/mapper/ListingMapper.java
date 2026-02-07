@@ -1,10 +1,10 @@
 package samoprodej.samoprodej.mapper;
 
 import org.springframework.stereotype.Component;
-import samoprodej.samoprodej.dto.CreateListingRequest;
-import samoprodej.samoprodej.dto.ListingResponse;
-import samoprodej.samoprodej.dto.PatchListingRequest;
-import samoprodej.samoprodej.dto.UpdateListingRequest;
+import samoprodej.samoprodej.dto.listing.CreateListingRequest;
+import samoprodej.samoprodej.dto.listing.ListingResponse;
+import samoprodej.samoprodej.dto.listing.PatchListingRequest;
+import samoprodej.samoprodej.dto.listing.UpdateListingRequest;
 import samoprodej.samoprodej.entity.Listing;
 import samoprodej.samoprodej.entity.Property;
 import samoprodej.samoprodej.entity.User;

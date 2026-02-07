@@ -4,10 +4,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import samoprodej.samoprodej.dto.CreateListingRequest;
-import samoprodej.samoprodej.dto.ListingResponse;
-import samoprodej.samoprodej.dto.PatchListingRequest;
-import samoprodej.samoprodej.dto.UpdateListingRequest;
+import samoprodej.samoprodej.dto.listing.CreateListingRequest;
+import samoprodej.samoprodej.dto.listing.ListingResponse;
+import samoprodej.samoprodej.dto.listing.PatchListingRequest;
+import samoprodej.samoprodej.dto.listing.UpdateListingRequest;
 import samoprodej.samoprodej.enums.ListingStatus;
 import samoprodej.samoprodej.service.ListingService;
 

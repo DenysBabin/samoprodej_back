@@ -1,4 +1,4 @@
-package samoprodej.samoprodej.dto;
+package samoprodej.samoprodej.dto.property;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

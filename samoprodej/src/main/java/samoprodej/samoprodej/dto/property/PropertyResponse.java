@@ -1,4 +1,4 @@
-package samoprodej.samoprodej.dto;
+package samoprodej.samoprodej.dto.property;
 
 import samoprodej.samoprodej.enums.ParkingType;
 import samoprodej.samoprodej.enums.PropertyType;

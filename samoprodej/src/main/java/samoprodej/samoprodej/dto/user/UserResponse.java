@@ -1,4 +1,4 @@
-package samoprodej.samoprodej.dto;
+package samoprodej.samoprodej.dto.user;
 
 import samoprodej.samoprodej.enums.AuthProvider;
 import samoprodej.samoprodej.enums.Language;

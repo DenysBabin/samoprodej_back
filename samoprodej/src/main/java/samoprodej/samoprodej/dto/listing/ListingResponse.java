@@ -1,4 +1,4 @@
-package samoprodej.samoprodej.dto;
+package samoprodej.samoprodej.dto.listing;
 
 import samoprodej.samoprodej.enums.ListingStatus;
 import samoprodej.samoprodej.enums.PaymentStatus;
