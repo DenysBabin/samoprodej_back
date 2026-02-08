@@ -153,7 +153,7 @@ public class UserService {
     /**
      * Simple password hashing (should be replaced with BCrypt in production)
      */
-    private String hashPassword(String password) {
+    public String hashPassword(String password) {
         // TODO: Replace with proper BCrypt hashing
         // For now, simple hash (not secure, but functional)
         return String.valueOf(password.hashCode());
