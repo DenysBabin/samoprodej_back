@@ -3,24 +3,26 @@ package samoprodej.samoprodej.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import samoprodej.samoprodej.config.SecurityUser;
 import samoprodej.samoprodej.dto.auth.AuthResponse;
 import samoprodej.samoprodej.dto.auth.LoginRequest;
 import samoprodej.samoprodej.dto.auth.RegisterRequest;
-import samoprodej.samoprodej.dto.user.UserResponse; // <--- Додано імпорт
+import samoprodej.samoprodej.dto.user.UserResponse;
 import samoprodej.samoprodej.entity.User;
 import samoprodej.samoprodej.enums.AuthProvider;
 import samoprodej.samoprodej.enums.Language;
 import samoprodej.samoprodej.enums.UserStatus;
-import samoprodej.samoprodej.mapper.UserMapper; // <--- Додано імпорт
+import samoprodej.samoprodej.mapper.UserMapper;
 import samoprodej.samoprodej.repository.UserRepository;
 import samoprodej.samoprodej.service.JwtService;
 import samoprodej.samoprodej.service.RefreshTokenService;
@@ -110,7 +112,12 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me(@AuthenticationPrincipal UserDetails userDetails) {
-        User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow();
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        var user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
         return ResponseEntity.ok(userMapper.toDto(user));
     }
 
