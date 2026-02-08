@@ -1,4 +1,4 @@
-package samoprodej.samoprodej.dto;
+package samoprodej.samoprodej.dto.listing;
 
 import samoprodej.samoprodej.enums.ListingStatus;
 import samoprodej.samoprodej.enums.PaymentStatus;
@@ -19,6 +19,8 @@ public record ListingResponse(
         Boolean petsAllowed,
         Boolean smokingAllowed,
         Boolean childrenAllowed,
-        Short maxTenants
+        Short maxTenants,
+        Instant createdAt,
+        Instant updatedAt
 ) {
 }

@@ -45,7 +45,7 @@ public class Listing {
     private PaymentStatus paymentStatus;
 
     @Column(name = "published_at")
-    @Setter(AccessLevel.NONE)
+    @Setter
     private Instant publishedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
