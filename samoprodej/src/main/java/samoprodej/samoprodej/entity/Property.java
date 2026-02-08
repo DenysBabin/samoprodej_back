@@ -15,8 +15,10 @@ import samoprodej.samoprodej.enums.ParkingType;
 import samoprodej.samoprodej.enums.PropertyType;
 
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Entity
 @Table(name = "properties")
@@ -70,12 +72,18 @@ public class Property {
     @Column(name = "address_text", nullable = false, length = 512)
     private String addressText;
 
+    @Size(max = 512)
+    @Column(name = "city_raw")
+    String cityRaw;
+
     @Column(precision = 10, scale = 7)
     private BigDecimal lat;
 
     @Column(precision = 10, scale = 7)
     private BigDecimal lng;
 
+    @Column(name = "city_norm", nullable = false)
+    private String cityNorm;
 
     @Size(max = 16)
     @Column(length = 16)
@@ -136,21 +144,35 @@ public class Property {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+
         if (this.country == null) this.country = "CZ";
         if (this.hasBalcony == null) this.hasBalcony = false;
-        if (this.hasTerrace == null) this.hasTerrace = false;
-        if (this.hasLoggia == null) this.hasLoggia = false;
-        if (this.hasGarden == null) this.hasGarden = false;
-        if (this.hasCellar == null) this.hasCellar = false;
         if (this.hasElevator == null) this.hasElevator = false;
+
+        normalizeCity();
     }
 
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+
+        normalizeCity();
+    }
+
+    private void normalizeCity() {
+        if (this.city != null) {
+            this.cityNorm = unaccent(this.city.toLowerCase());
+        }
+    }
+
+    private String unaccent(String src) {
+        if (src == null) return null;
+        String normalized = Normalizer.normalize(src, Normalizer.Form.NFD);
+        return Pattern.compile("\\p{InCombiningDiacriticalMarks}+").matcher(normalized).replaceAll("");
     }
 }
