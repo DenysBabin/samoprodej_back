@@ -99,6 +99,7 @@ public class PropertyService {
 
     // Legacy methods for backward compatibility
     @Deprecated
+    @SuppressWarnings("deprecation")
     public PropertyDTO createProperty(PropertyDTO dto) {
         log.info("Creating property for owner: {}", dto.getOwnerUserId());
         Property property = mapper.toEntity(dto);
@@ -115,6 +116,7 @@ public class PropertyService {
 
     @Deprecated
     @Transactional(readOnly = true)
+    @SuppressWarnings("deprecation")
     public List<PropertyDTO> getAllProperties() {
         return repository.findAll().stream()
                 .map(mapper::toDto)
@@ -123,6 +125,7 @@ public class PropertyService {
 
     @Deprecated
     @Transactional(readOnly = true)
+    @SuppressWarnings("deprecation")
     public PropertyDTO getPropertyById(UUID id) {
         Property property = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Property not found with id: " + id));
@@ -138,6 +141,7 @@ public class PropertyService {
     }
 
     @Deprecated
+    @SuppressWarnings("deprecation")
     public PropertyDTO updateProperty(UUID id, PropertyDTO dto) {
         log.info("Updating property ID: {}", id);
         Property existing = repository.findById(id)
@@ -159,6 +163,7 @@ public class PropertyService {
         repository.deleteById(id);
     }
 
+    @SuppressWarnings("deprecation")
     public PropertyMediaDTO addMedia(UUID propertyId, PropertyMediaDTO mediaDto) {
         log.info("Adding media to property ID: {}", propertyId);
 
@@ -172,6 +177,7 @@ public class PropertyService {
         return mediaMapper.toDto(saved);
     }
 
+    @SuppressWarnings("deprecation")
     @Transactional(readOnly = true)
     public List<PropertyMediaDTO> getMediaForProperty(UUID propertyId) {
         if (!repository.existsById(propertyId)) {

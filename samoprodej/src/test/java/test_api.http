@@ -1,0 +1,23 @@
+### Registration
+POST http://localhost:8082/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "еtestuser@example.com",
+  "password": "password123",
+  "role": "OWNER",
+  "preferredLang": "CS"
+}
+
+### Login
+POST http://localhost:8082/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "еtestuser@example.com",
+  "password": "password123"
+}
+
+### Protected resource test
+GET http://localhost:8082/api/listings
+Authorization: Bearer eyJhbGciOiJSUzI1NiJ9.eyJyb2xlIjoiT1dORVIiLCJ1c2VySWQiOiJiODFhNDdkNC02M2I2LTRkZTAtYWQzYy05YjlkNDY0ZmNlMWYiLCJzdWIiOiLQtXRlc3R1c2VyQGV4YW1wbGUuY29tIiwiaWF0IjoxNzcwNjU2NjAwLCJleHAiOjE3NzA2NTc1MDB9.iVUb41jto2VJzxpKUH_2CQbLynavTI_mzFhlBJcWwdVFyhGHKMWVQwause4lHG_Xeu8IvzZqXYO_ZUea4g3ZATP7mcjeSjBMP_GzCDAqz8LGrQx9GsOSqtZEy1Shv_xyvkQ3VsSk4Lbo5DqQKrDwCKZNNJwMvauT3Q7zt_VbxKp6IdmAkKrm8esAyKI2aB1ZxedsB3ToDgPtcfDDUxnYZ2NTdmm9AsWXHe2DeCJALBPiJ68CkBylphLnKleuv13iGBdhUfuCl8deQ086xu2CanBcyvV9h3G_k5SvAMMDAByRGF-MQc5TAK98z9WPR2ZGTd5Cv0ilrqgpIPpCMN-HNQ
