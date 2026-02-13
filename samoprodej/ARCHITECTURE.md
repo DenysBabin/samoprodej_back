@@ -1,183 +1,231 @@
-# Архитектура проекта и руководство по разработке
+# Архитектура проекта
 
-## 1. Как сейчас устроено приложение
+## 1. Общая архитектура
 
-### 1.1. Общая схема
-
-Приложение построено по классической трёхслойной архитектуре:
+Классическая слоистая архитектура Spring Boot:
 
 ```
 Client (HTTP/JSON)
-       ↓
-  Controllers  — REST API, валидация входящих DTO
-       ↓
-   Services   — бизнес-логика, транзакции
-       ↓
- Repositories — доступ к БД через JPA
-       ↓
-   Entity     — JPA-сущности
+       |
+  Controllers  — REST API, валидация DTO, обработка ошибок
+       |
+   Services    — бизнес-логика, @Transactional
+       |
+ Repositories  — JPA (Spring Data), доступ к БД
+       |
+   Entities    — JPA-сущности (таблицы PostgreSQL)
 ```
 
-Данные между слоями передаются через **DTO (Data Transfer Objects)**, преобразование Entity ↔ DTO выполняется в **Mapper**.
+Данные между слоями передаются через **DTO** (Java records). Преобразование Entity <-> DTO выполняется в **Mapper** (`@Component`, ручной маппинг без MapStruct).
 
-### 1.2. Структура пакетов
+## 2. Структура пакетов
+
+Базовый пакет: `samoprodej.samoprodej`
 
 ```
 samoprodej.samoprodej/
-├── config/           — конфигурация (Security, FileStorage, DataInitializer)
-├── controller/       — REST-контроллеры
-├── dto/              — DTO, разбиты по доменам
-│   ├── user/
-│   ├── property/
-│   ├── propertymedia/
-│   └── listing/
-├── Entity/           — JPA-сущности
-├── enums/            — перечисления
-├── mapper/           — Entity ↔ DTO
-├── Repository/       — JPA-репозитории
-└── service/          — сервисы
+├── config/                 — SecurityConfig, JwtAuthenticationFilter, FileStorageConfig, ApplicationConfig
+│   └── initializers/       — DataInitializer, UserInitializer, PropertyInitializer и др.
+├── controller/             — REST-контроллеры (AuthController, UserController, PropertyController, ListingController)
+├── dto/                    — DTO, разделены по доменам
+│   ├── auth/               — AuthResponse, LoginRequest, RegisterRequest
+│   ├── user/               — UserResponse, CreateUserRequest, UpdateUserRequest, ChangePasswordRequest
+│   ├── property/           — PropertyResponse, CreatePropertyRequest, UpdatePropertyRequest, PropertyDTO (deprecated)
+│   ├── propertymedia/      — PropertyMediaResponse, CreatePropertyMediaRequest, UpdatePropertyMediaRequest, ReorderMediaRequest, PropertyMediaDTO (deprecated)
+│   └── listing/            — ListingResponse, CreateListingRequest, UpdateListingRequest, PatchListingRequest
+├── entity/                 — JPA-сущности
+├── enums/                  — 14 перечислений
+├── mapper/                 — Entity <-> DTO маппинг (@Component)
+├── repository/             — JpaRepository интерфейсы
+└── service/                — Бизнес-логика (@Service)
 ```
 
-### 1.3. Домены и их связи
+## 3. Домены
 
-| Домен       | Entity       | Контроллер       | Сервис              | Описание                    |
-|------------|--------------|------------------|---------------------|-----------------------------|
-| User       | User         | UserController   | UserService         | Пользователи                |
-| Property   | Property     | PropertyController| PropertyService     | Недвижимость                |
-| PropertyMedia | PropertyMedia | (в PropertyController) | PropertyMediaService | Фото/видео недвижимости |
-| Listing    | Listing      | ListingController| ListingService      | Объявления об аренде        |
+| Домен | Entity | Контроллер | Сервис | Таблица |
+|-------|--------|-----------|--------|---------|
+| Auth | — | AuthController | JwtService, RefreshTokenService | — |
+| User | User | UserController | UserService | `users` |
+| Property | Property | PropertyController | PropertyService | `properties` |
+| PropertyMedia | PropertyMedia | PropertyController | PropertyMediaService, FileStorageService | `property_media` |
+| Listing | Listing | ListingController | ListingService | `listings` |
+| RefreshToken | RefreshToken | — | RefreshTokenService | `refresh_tokens` |
 
-Связи: `Property` → `User` (owner), `PropertyMedia` → `Property`, `Listing` → `Property`, `Listing` → `User` (owner).
+### Связи между сущностями
 
-### 1.4. Организация DTO
+```
+User ←── Property (ownerUserId: raw UUID, не @ManyToOne)
+User ←── Listing (@ManyToOne LAZY)
+Property ←── Listing (@ManyToOne LAZY)
+Property ←── PropertyMedia (@ManyToOne LAZY)
+User ←── RefreshToken (@ManyToOne LAZY)
+```
 
-DTO лежат в подпапках по доменам. Package: `samoprodej.samoprodej.dto.{domain}`.
+## 4. Аутентификация и безопасность
 
-Типы DTO:
-- **Create*Request** — создание (обязательные поля, валидация)
-- **Update*Request** — полное обновление (все поля опциональные)
-- **Patch*Request** — частичное обновление (при необходимости)
-- **Response** — ответ API
+### JWT (RS256)
 
-Пример для propertymedia:
-- `CreatePropertyMediaRequest`, `UpdatePropertyMediaRequest`, `ReorderMediaRequest`, `PropertyMediaResponse`
+- **JwtService** — генерация и валидация access-токенов (RS256, RSA ключи)
+- **RefreshTokenService** — жизненный цикл refresh-токенов с ротацией и обнаружением replay-атак
+- **JwtAuthenticationFilter** — извлекает JWT из `Authorization: Bearer`, устанавливает `SecurityContext`
+- **SecurityConfig** — фильтр-цепочка: CSRF выключен, stateless сессии, JWT-фильтр перед `UsernamePasswordAuthenticationFilter`
+- **SecurityUser** — адаптер `UserDetails`, оборачивает `User` entity
+- **ApplicationConfig** — `PasswordEncoder` (BCrypt), `AuthenticationProvider`, `UserDetailsService`
 
-### 1.5. Property Media — как это работает
+### Конфигурация ключей
 
-- **PropertyMediaService** — загрузка файлов (`uploadMedia`), добавление по URL (`addMediaFromUrl`), переупорядочивание, обновление, удаление.
-- **FileStorageService** — сохранение файлов на диск, генерация превью, удаление.
-- **FileStorageConfig** — настройки из `application.properties` (путь, размеры, лимиты).
-- Файлы хранятся в `uploads/properties/{propertyId}/{mediaId}/`.
+Свойства JWT (**не** в `application.properties` — передаются через env-переменные или отдельный профиль):
+
+```
+jwt.private-key       — RSA приватный ключ (PEM, base64)
+jwt.public-key        — RSA публичный ключ (PEM, base64)
+jwt.access-token-expiration    — время жизни access-токена (мс)
+jwt.refresh-token-expiration   — время жизни refresh-токена (мс)
+```
+
+### Токены
+
+| Тип | Хранение | Передача | Содержимое |
+|-----|----------|----------|------------|
+| Access | — | `Authorization: Bearer <token>` | `userId`, `role`, `sub` (email) |
+| Refresh | SHA-256 хэш в БД (`refresh_tokens`) | httpOnly cookie `refresh_token` | 64 байта random |
+
+### Публичные эндпоинты
+
+`/api/auth/**`, `/api/public/**` — не требуют JWT. Все остальные пути требуют аутентификации.
+
+## 5. Сущности (Entities)
+
+### Активные сущности
+
+| Entity | Таблица | ID | Soft Delete | Особенности |
+|--------|---------|----|-------------|-------------|
+| User | `users` | `@GeneratedValue(UUID)` | Ручной (`deletedAt`, без фильтра в запросах) | `@CreationTimestamp`, `@UpdateTimestamp` |
+| Property | `properties` | `@UuidGenerator` | `@SQLDelete` + `@SQLRestriction("deleted_at IS NULL")` | `@PrePersist/@PreUpdate`: нормализация города (cityNorm) |
+| PropertyMedia | `property_media` | `@GeneratedValue` | Нет (hard delete) | Unique constraint `(property_id, sort_order)` |
+| Listing | `listings` | `@GeneratedValue` | Нет (hard delete) | `@PrePersist` → `DRAFT` + `UNPAID`, метод `publish()` |
+| RefreshToken | `refresh_tokens` | `@UuidGenerator` | Отзыв через `revokedAt` | Уникальный индекс по `token_hash` |
+
+### Stub-сущности (скелеты)
+
+| Entity | Таблица | Статус |
+|--------|---------|--------|
+| Payment | `payments` | Абстрактный, `@Inheritance(JOINED)` |
+| DealPayment | `payments_deal` | **Нет `@Entity`** — не работает |
+| ListingPayment | `payments_listing` | **Нет `@Entity`** — не работает |
+| VerificationPayment | `payments_listing` | **Нет `@Entity`**, дублирует имя таблицы с ListingPayment |
+| Deal | `deal` | Только ID, пустой |
+| VerificationRequest | `verification_request` | Только ID, пустой |
+
+## 6. Soft Delete — два подхода
+
+### Property (полный Hibernate soft delete)
+
+```java
+@SQLDelete(sql = "UPDATE properties SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+@SQLRestriction("deleted_at IS NULL")
+```
+
+- `repository.delete(p)` → `UPDATE ... SET deleted_at = NOW()` (не физическое удаление)
+- Все JPA-запросы автоматически исключают удалённые записи
+
+### User (неполный soft delete)
+
+- `UserService.delete()` вручную устанавливает `deletedAt`
+- **Нет `@SQLRestriction`** — удалённые пользователи видны в `findAll()`, `findByEmail()` и т.д.
+
+## 7. DTO-конвенции
+
+DTO — Java records в подпакетах по доменам (`dto/user/`, `dto/property/` и т.д.):
+
+| Тип | Назначение | Валидация |
+|-----|-----------|-----------|
+| `Create*Request` | Создание | `@NotNull`, `@NotBlank`, `@Size`, `@Positive` |
+| `Update*Request` | Полное обновление | Все поля опциональные |
+| `Patch*Request` | Частичное обновление | Идентичная структура с Update |
+| `*Response` | Ответ API | Только для чтения |
+
+Legacy DTO-классы (`PropertyDTO`, `PropertyMediaDTO`) — `@Data` + `@Deprecated`, существуют параллельно с records.
+
+## 8. Mapper-паттерн
+
+Каждый маппер — `@Component` с методами:
+
+```java
+Response toResponse(Entity e);                       // Entity → Response DTO
+Entity toEntity(CreateRequest r);                    // или (CreateRequest r, ParentEntity p)
+void updateEntityFromDto(UpdateRequest r, Entity e); // null-safe частичное обновление
+```
+
+`updateEntityFromDto` обновляет только non-null поля из запроса — это паттерн partial update, используемый повсеместно.
+
+## 9. Хранение файлов
+
+| Компонент | Роль |
+|-----------|------|
+| FileStorageConfig | Настройки из `file.storage.*` properties |
+| FileStorageService | Сохранение/удаление файлов, генерация превью |
+| PropertyMediaService | Бизнес-логика загрузки, переупорядочивания, удаления |
+
+- Путь: `uploads/properties/{propertyId}/{mediaId}/media.{ext}`
+- Превью фото: Thumbnailator (max 800x600)
+- Лимиты: 10MB фото, 100MB видео, 50 медиа на объект
+- MIME-типы: `image/jpeg`, `image/png`, `image/webp`, `video/mp4`, `video/webm`, `application/*`, `model/*`
+
+## 10. Инициализация данных
+
+При запуске `DataInitializer` (`CommandLineRunner`) засевает пустую БД:
+
+1. `UserInitializer` — admin + tenant + owner (настраивается `app.user.count`, по умолчанию 10)
+2. `PropertyInitializer` — объекты в чешских городах (`app.property.count`, по умолчанию 50)
+3. `PropertyMediaInitializer` — 3-6 placeholder фото на объект (picsum.photos URLs)
+4. `ListingInitializer` — объявления, 70% published / 30% drafts (`app.listing.count`, по умолчанию 50)
+
+Засевка выполняется только если таблицы пустые.
+
+## 11. Тестирование
+
+Два тест-файла:
+
+| Файл | Тип | Покрытие |
+|------|-----|----------|
+| `SamoprodejApplicationTests` | `@SpringBootTest` | Загрузка контекста |
+| `AuthControllerTest` | `@WebMvcTest` | 6 тестов: register (успех, дубль email, неизвестный язык), login (успех, неверный пароль, несуществующий пользователь) |
+
+Подход к тестированию:
+- `@WebMvcTest` + `@AutoConfigureMockMvc(addFilters=false)` — без Security-фильтров
+- `@MockitoBean` для мокирования зависимостей
+- `MockMvc` для HTTP-симуляции
+- Проверки: HTTP статус, JSON body (`jsonPath`), headers (`Set-Cookie`)
+
+## 12. Известные проблемы
+
+1. **Двойное хэширование паролей**: `UserService.hashPassword()` использует `String.hashCode()` (небезопасно), а `AuthController` — BCrypt. Пользователи, созданные через `UserService.create()` или `DataInitializer`, не могут логиниться через `/api/auth/login`.
+2. **Отсутствует `@Entity`** на `DealPayment`, `ListingPayment`, `VerificationPayment`.
+3. **Дублирование имени таблицы** `payments_listing` у `VerificationPayment` и `ListingPayment`.
+4. **Неполный soft delete User** — нет `@SQLRestriction`, удалённые пользователи видны в запросах.
+5. **JWT-свойства не в `application.properties`** — нужны env-переменные.
+6. **Опечатка `PaymentStatus.SUCCEDED`** — должно быть `SUCCEEDED`.
+7. **`PropertyStatus` enum** — определён, но не используется ни одной сущностью.
+8. **Дублирование зависимостей в `pom.xml`** — `spring-boot-starter-security` и `spring-boot-starter-validation` указаны дважды.
 
 ---
 
-## 2. Как создавать новые сущности, сервисы, контроллеры и DTO
+## Руководство по добавлению новых сущностей
 
-### Шаг 1: Entity
+### Чек-лист
 
-1. Создайте класс в `Entity/` с JPA-аннотациями.
-2. Добавьте `@Entity`, `@Table`, `@Id`, `@GeneratedValue(UUID)`.
-3. Используйте `@ManyToOne`, `@OneToMany` для связей.
-4. При необходимости — `@SQLDelete`, `@SQLRestriction` для soft delete.
+1. **Entity** в `entity/` — `@Entity`, `@Table`, `@Id`, `@GeneratedValue(UUID)`, связи через `@ManyToOne`/`@OneToMany`
+2. **Enum** в `enums/` (если нужен)
+3. **Repository** в `repository/` — `extends JpaRepository<Entity, UUID>`
+4. **DTO** в `dto/{domain}/` — `Create*Request`, `Update*Request`, `*Response` (Java records)
+5. **Mapper** в `mapper/` — `@Component`, методы `toResponse`, `toEntity`, `updateEntityFromDto`
+6. **Service** в `service/` — `@Service`, `@Transactional`, инжектировать Repository + Mapper
+7. **Controller** в `controller/` — `@RestController`, `@RequestMapping("/api/...")`, `@Valid` для DTO
+8. Обновить `SecurityConfig` если нужны публичные эндпоинты
+9. Обновить `API_DOCUMENTATION.md`
 
-Пример структуры:
-```java
-@Entity
-@Table(name = "example_entity")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
-public class ExampleEntity {
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
-    // поля, связи, createdAt/updatedAt при необходимости
-}
-```
-
-### Шаг 2: Enum (если нужен)
-
-Создайте enum в `enums/`:
-```java
-public enum ExampleStatus { DRAFT, ACTIVE, ARCHIVED }
-```
-
-### Шаг 3: Repository
-
-1. Создайте интерфейс в `Repository/`.
-2. Наследуйте `JpaRepository<Entity, UUID>`.
-3. Добавьте кастомные методы при необходимости.
-
-```java
-public interface ExampleRepository extends JpaRepository<ExampleEntity, UUID> {
-    List<ExampleEntity> findByStatus(ExampleStatus status);
-}
-```
-
-### Шаг 4: DTO
-
-1. Создайте папку `dto/{domain}/` (например, `dto/example/`).
-2. Создайте DTO с package `samoprodej.samoprodej.dto.example`:
-   - `CreateExampleRequest` — record с `@NotNull`, `@NotBlank`, `@Size` и т.д.
-   - `UpdateExampleRequest` — record, все поля опциональные.
-   - `ExampleResponse` — record для ответа.
-
-Пример:
-```java
-// dto/example/CreateExampleRequest.java
-package samoprodej.samoprodej.dto.example;
-
-public record CreateExampleRequest(
-    @NotBlank @Size(max = 255) String name,
-    @NotNull UUID parentId
-) {}
-```
-
-### Шаг 5: Mapper
-
-1. Создайте класс в `mapper/` с `@Component`.
-2. Реализуйте:
-   - `toResponse(Entity)` → Response
-   - `toEntity(CreateRequest)` → Entity
-   - `updateEntityFromDto(UpdateRequest, Entity)` — обновление entity.
-
-```java
-@Component
-public class ExampleMapper {
-    public ExampleResponse toResponse(ExampleEntity e) { ... }
-    public ExampleEntity toEntity(CreateExampleRequest r) { ... }
-    public void updateEntityFromDto(UpdateExampleRequest r, ExampleEntity e) { ... }
-}
-```
-
-### Шаг 6: Service
-
-1. Создайте класс в `service/` с `@Service`, `@RequiredArgsConstructor`, `@Transactional`.
-2. Инжектируйте Repository и Mapper.
-3. Используйте `@Transactional(readOnly = true)` для read-only методов.
-4. Логируйте через `@Slf4j`.
-5. Выбрасывайте `RuntimeException` при ошибках (например, «not found»).
-
-```java
-@Slf4j
-@Service
-@RequiredArgsConstructor
-@Transactional
-public class ExampleService {
-    private final ExampleRepository repository;
-    private final ExampleMapper mapper;
-
-    public ExampleResponse create(CreateExampleRequest request) { ... }
-    @Transactional(readOnly = true)
-    public ExampleResponse getById(UUID id) { ... }
-    public ExampleResponse update(UUID id, UpdateExampleRequest request) { ... }
-    public void delete(UUID id) { ... }
-}
-```
-
-### Шаг 7: Controller
-
-1. Создайте класс в `controller/` с `@RestController`, `@RequestMapping("/api/...")`, `@RequiredArgsConstructor`.
-2. Инжектируйте Service.
-3. Используйте `@Valid` для тела запросов.
-4. Возвращайте `ResponseEntity` и обрабатывайте ошибки в try-catch.
+### Паттерн контроллера
 
 ```java
 @RestController
@@ -194,55 +242,39 @@ public class ExampleController {
             return ResponseEntity.badRequest().build();
         }
     }
-    // GET, PUT, PATCH, DELETE...
 }
 ```
 
-### Шаг 8: Импорты
+### Паттерн сервиса
 
-Все DTO импортируются с указанием домена:
 ```java
-import samoprodej.samoprodej.dto.example.CreateExampleRequest;
-import samoprodej.samoprodej.dto.example.ExampleResponse;
-import samoprodej.samoprodej.dto.example.UpdateExampleRequest;
+@Slf4j
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class ExampleService {
+    private final ExampleRepository repository;
+    private final ExampleMapper mapper;
+
+    @Transactional(readOnly = true)
+    public ExampleResponse getById(UUID id) {
+        return repository.findById(id)
+            .map(mapper::toResponse)
+            .orElseThrow(() -> new RuntimeException("Not found: " + id));
+    }
+}
 ```
 
-### Шаг 9: Безопасность (опционально)
+### Паттерн маппера
 
-Если нужна защита эндпоинтов, обновите `SecurityConfig`: добавьте правила для новых путей `/api/...`.
-
----
-
-## 3. Чек-лист для новой сущности
-
-- [ ] Entity в `Entity/`
-- [ ] Enum в `enums/` (если нужен)
-- [ ] Repository в `Repository/`
-- [ ] Папка `dto/{domain}/` и DTO (Create, Update, Response)
-- [ ] Mapper в `mapper/`
-- [ ] Service в `service/`
-- [ ] Controller в `controller/`
-- [ ] Обновить `API_DOCUMENTATION.md`
-- [ ] При необходимости — DataInitializer, миграции
-
----
-
-## 4. Важные замечания
-
-### Валидация
-
-Используйте Jakarta Validation:
-- `@NotNull`, `@NotBlank` — обязательные поля
-- `@Email`, `@Size`, `@Positive`, `@DecimalMin`, `@DecimalMax`
-
-### Переменные в lambda
-
-Переменные в lambda должны быть effectively final. Если нужно переприсваивать значение, заведите отдельную переменную для использования в lambda.
-
-### Область видимости в try-catch
-
-Переменные, объявленные внутри `try`, недоступны в `catch`. Объявляйте их до блока `try`, если они нужны в `catch`.
-
-### Дополнительные зависимости
-
-Для загрузки файлов используйте `FileStorageService` и `FileStorageConfig`. Пример — PropertyMediaService.
+```java
+@Component
+public class ExampleMapper {
+    public ExampleResponse toResponse(ExampleEntity e) { /* ... */ }
+    public ExampleEntity toEntity(CreateExampleRequest r) { /* ... */ }
+    public void updateEntityFromDto(UpdateExampleRequest r, ExampleEntity e) {
+        if (r.name() != null) e.setName(r.name());
+        // null-safe: обновляются только переданные поля
+    }
+}
+```

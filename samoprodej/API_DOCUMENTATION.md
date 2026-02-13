@@ -1,183 +1,248 @@
-# API Документация
+# API Documentation
 
-## Обзор
+## Общие сведения
 
-API построено на Spring Boot MVC архитектуре с использованием следующих компонентов:
-- **DTO (Data Transfer Objects)** - Java records для передачи данных
-- **Services** - бизнес-логика с транзакциями
-- **Controllers** - REST API эндпоинты
-- **Mappers** - преобразование между Entity и DTO
-- **Repositories** - доступ к данным через JPA
+- **Базовый URL**: `http://localhost:8082/api`
+- **Формат**: JSON
+- **Аутентификация**: JWT (RS256) в заголовке `Authorization: Bearer <token>`
+- **Публичные эндпоинты**: `/api/auth/**`, `/api/public/**`
 
-## Базовый URL
+### HTTP-коды ответов
 
+| Код | Описание |
+|-----|----------|
+| 200 | Успешный запрос |
+| 201 | Ресурс создан |
+| 204 | Успешное удаление (нет тела ответа) |
+| 400 | Ошибка валидации / некорректные данные |
+| 401 | Не аутентифицирован / неверные учётные данные |
+| 404 | Ресурс не найден |
+| 500 | Внутренняя ошибка сервера |
+
+---
+
+## Auth API
+
+Базовый путь: `/api/auth`
+
+Все эндпоинты Auth API являются публичными (не требуют JWT), кроме `GET /me`.
+
+### POST /api/auth/register
+
+Регистрация нового пользователя. Пароль хэшируется через BCrypt.
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "secret123",
+  "firstName": "Jan",
+  "lastName": "Novak",
+  "role": "TENANT",
+  "preferredLang": "CS"
+}
 ```
-http://localhost:8082/api
+
+| Поле | Тип | Обязательное | Описание |
+|------|-----|-------------|----------|
+| email | string | да | Email (уникальный) |
+| password | string | да | Пароль |
+| firstName | string | нет | Имя |
+| lastName | string | нет | Фамилия |
+| role | enum | нет | `TENANT`, `OWNER`, `ADMIN` |
+| preferredLang | string | нет | `CS`, `UA`, `EN`, `RU` (по умолчанию `CS`) |
+
+**Response:** `200 OK`
+```json
+{
+  "user": { "...UserResponse..." },
+  "accessToken": "eyJhbG...",
+  "expiresInSec": 900
+}
 ```
 
-## Общие принципы
+Также устанавливает httpOnly cookie `refresh_token`.
 
-### HTTP Методы
-- `GET` - получение данных (read-only операции)
-- `POST` - создание новых ресурсов
-- `PUT` - полное обновление ресурса
-- `PATCH` - частичное обновление ресурса
-- `DELETE` - удаление ресурса (soft delete)
+### POST /api/auth/login
 
-### Коды ответов
-- `200 OK` - успешный запрос
-- `201 Created` - ресурс создан
-- `204 No Content` - успешное удаление
-- `400 Bad Request` - ошибка валидации или некорректные данные
-- `404 Not Found` - ресурс не найден
-- `500 Internal Server Error` - внутренняя ошибка сервера
+Аутентификация по email/паролю.
 
-### Формат данных
-Все запросы и ответы используют JSON формат.
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "secret123"
+}
+```
+
+**Response:** `200 OK` — структура аналогична register. `401` при неверных данных.
+
+### POST /api/auth/refresh
+
+Обновление access-токена через refresh-токен из cookie.
+
+**Cookie:** `refresh_token` — обязательный.
+
+**Response:** `200 OK` с новым `AuthResponse`. Старый refresh-токен отзывается, в cookie записывается новый. При повторном использовании отозванного токена — все токены пользователя отзываются (защита от replay-атак).
+
+### POST /api/auth/logout
+
+Отзыв refresh-токена и очистка cookie.
+
+**Cookie:** `refresh_token` — опциональный.
+
+**Response:** `200 OK`
+
+### GET /api/auth/me
+
+Получение профиля текущего аутентифицированного пользователя.
+
+**Заголовок:** `Authorization: Bearer <access_token>`
+
+**Response:** `200 OK` с `UserResponse`
 
 ---
 
 ## User API
 
-### Базовый путь: `/api/users`
+Базовый путь: `/api/users`
 
-#### 1. Создание пользователя
-```http
-POST /api/users
-Content-Type: application/json
+Все эндпоинты требуют аутентификации.
 
+### POST /api/users
+
+Создание пользователя.
+
+**Request Body:**
+```json
 {
   "email": "user@example.com",
   "phone": "+420123456789",
   "password": "password123",
-  "firstName": "Иван",
-  "lastName": "Иванов",
+  "firstName": "Jan",
+  "lastName": "Novak",
   "role": "TENANT",
   "authProvider": "LOCAL",
   "preferredLang": "CS"
 }
 ```
 
-**Валидация:**
-- `email` - обязательное, валидный email, максимум 255 символов
-- `password` - обязательное, минимум 6 символов, максимум 100
-- `phone` - опциональное, максимум 32 символа
-- `firstName`, `lastName` - опциональные, максимум 64 символа
-- `role` - обязательное: `TENANT`, `OWNER`, `ADMIN`
-- `authProvider` - обязательное: `LOCAL`, `BANKID`, `NEOID`
-- `preferredLang` - опциональное: `CS`, `UA`, `EN`, `RU`
+| Поле | Тип | Обязательное | Валидация |
+|------|-----|-------------|-----------|
+| email | string | да | `@Email`, max 255 |
+| phone | string | нет | max 32 |
+| password | string | да | min 6, max 100 |
+| firstName | string | нет | max 64 |
+| lastName | string | нет | max 64 |
+| role | enum | да | `TENANT`, `OWNER`, `ADMIN` |
+| authProvider | enum | да | `LOCAL`, `BANKID`, `NEOID` |
+| preferredLang | enum | нет | `CS`, `UA`, `EN`, `RU` |
 
-**Ответ:** `200 OK` с `UserResponse`
+**Response:** `200 OK` с `UserResponse`
 
-#### 2. Получение всех пользователей
-```http
-GET /api/users
-```
+### GET /api/users
 
-**Ответ:** `200 OK` со списком `UserResponse[]`
+Получение всех пользователей.
 
-#### 3. Получение пользователя по ID
-```http
-GET /api/users/{id}
-```
+**Response:** `200 OK` с `UserResponse[]`
 
-**Ответ:** `200 OK` с `UserResponse` или `404 Not Found`
+### GET /api/users/{id}
 
-#### 4. Полное обновление пользователя (PUT)
-```http
-PUT /api/users/{id}
-Content-Type: application/json
+Получение пользователя по ID.
 
+**Response:** `200 OK` с `UserResponse` или `404`
+
+### PUT /api/users/{id}
+
+Полное обновление пользователя. Все поля опциональные — обновляются только переданные.
+
+**Request Body:**
+```json
 {
-  "email": "newemail@example.com",
+  "email": "new@example.com",
   "phone": "+420987654321",
-  "firstName": "Петр",
-  "lastName": "Петров",
+  "firstName": "Petr",
+  "lastName": "Svoboda",
   "preferredLang": "EN",
   "avatarUrl": "https://example.com/avatar.jpg"
 }
 ```
 
-**Валидация:**
-- Все поля опциональные
-- `email` - валидный email, если указан
-- `phone` - максимум 32 символа
-- `firstName`, `lastName` - максимум 64 символа
+| Поле | Тип | Валидация |
+|------|-----|-----------|
+| email | string | `@Email`, max 255 |
+| phone | string | max 32 |
+| firstName | string | max 64 |
+| lastName | string | max 64 |
+| preferredLang | enum | `CS`, `UA`, `EN`, `RU` |
+| avatarUrl | string | — |
 
-**Ответ:** `200 OK` с обновленным `UserResponse` или `404 Not Found`
+**Response:** `200 OK` с `UserResponse` или `404`
 
-#### 5. Частичное обновление пользователя (PATCH)
-```http
-PATCH /api/users/{id}
-Content-Type: application/json
+### PATCH /api/users/{id}
 
+Частичное обновление. Тело запроса идентично PUT.
+
+**Response:** `200 OK` с `UserResponse` или `404`
+
+### DELETE /api/users/{id}
+
+Soft delete — устанавливает `deletedAt`.
+
+**Response:** `204 No Content` или `404`
+
+### POST /api/users/{id}/activate
+
+Активация пользователя (статус → `ACTIVE`).
+
+**Response:** `200 OK` с `UserResponse`
+
+### POST /api/users/{id}/block
+
+Блокировка пользователя (статус → `BLOCKED`).
+
+**Response:** `200 OK` с `UserResponse`
+
+### POST /api/users/{id}/change-password
+
+Смена пароля.
+
+**Request Body:**
+```json
 {
-  "firstName": "Новое имя"
+  "oldPassword": "old_password",
+  "newPassword": "new_password123"
 }
 ```
 
-**Ответ:** `200 OK` с обновленным `UserResponse` или `404 Not Found`
+| Поле | Тип | Валидация |
+|------|-----|-----------|
+| oldPassword | string | `@NotBlank` |
+| newPassword | string | `@NotBlank`, min 6, max 100 |
 
-#### 6. Удаление пользователя (Soft Delete)
-```http
-DELETE /api/users/{id}
-```
+**Response:** `200 OK` или `400`
 
-**Ответ:** `204 No Content` или `404 Not Found`
+### GET /api/users/search/email?email={email}
 
-#### 7. Активация пользователя
-```http
-POST /api/users/{id}/activate
-```
+Поиск пользователя по email.
 
-**Ответ:** `200 OK` с `UserResponse` (статус изменен на `ACTIVE`)
+**Response:** `200 OK` с `UserResponse` или `404`
 
-#### 8. Блокировка пользователя
-```http
-POST /api/users/{id}/block
-```
+### GET /api/users/search/phone?phone={phone}
 
-**Ответ:** `200 OK` с `UserResponse` (статус изменен на `BLOCKED`)
+Поиск пользователя по телефону.
 
-#### 9. Смена пароля
-```http
-POST /api/users/{id}/change-password
-Content-Type: application/json
+**Response:** `200 OK` с `UserResponse` или `404`
 
-{
-  "oldPassword": "старый_пароль",
-  "newPassword": "новый_пароль123"
-}
-```
+### UserResponse
 
-**Валидация:**
-- `oldPassword` - обязательное
-- `newPassword` - обязательное, минимум 6 символов, максимум 100
-
-**Ответ:** `200 OK` или `400 Bad Request`
-
-#### 10. Поиск по email
-```http
-GET /api/users/search/email?email=user@example.com
-```
-
-**Ответ:** `200 OK` с `UserResponse` или `404 Not Found`
-
-#### 11. Поиск по телефону
-```http
-GET /api/users/search/phone?phone=+420123456789
-```
-
-**Ответ:** `200 OK` с `UserResponse` или `404 Not Found`
-
-### UserResponse структура
 ```json
 {
   "id": "uuid",
   "email": "user@example.com",
   "phone": "+420123456789",
-  "firstName": "Иван",
-  "lastName": "Иванов",
+  "firstName": "Jan",
+  "lastName": "Novak",
   "role": "TENANT",
   "status": "ACTIVE",
   "authProvider": "LOCAL",
@@ -193,22 +258,25 @@ GET /api/users/search/phone?phone=+420123456789
 
 ## Property API
 
-### Базовый путь: `/api/properties`
+Базовый путь: `/api/properties`
 
-#### 1. Создание недвижимости
-```http
-POST /api/properties
-Content-Type: application/json
+Все эндпоинты требуют аутентификации.
 
+### POST /api/properties
+
+Создание объекта недвижимости.
+
+**Request Body:**
+```json
 {
   "ownerUserId": "uuid",
   "type": "APARTMENT",
   "country": "CZ",
-  "city": "Прага",
-  "district": "Прага 1",
-  "street": "Вацлавская площадь",
+  "city": "Praha",
+  "district": "Praha 1",
+  "street": "Vaclavske namesti",
   "houseNumber": "1",
-  "addressText": "Вацлавская площадь 1, Прага 1",
+  "addressText": "Vaclavske namesti 1, Praha 1",
   "lat": 50.0833,
   "lng": 14.4167,
   "dispozice": "2+kk",
@@ -228,203 +296,81 @@ Content-Type: application/json
 }
 ```
 
-**Валидация:**
-- `ownerUserId` - обязательное, UUID существующего пользователя
-- `type` - обязательное: `APARTMENT`, `HOUSE`, `ROOM`, `COMMERCIAL`, `LAND`, `OTHER`
-- `city` - обязательное, максимум 128 символов
-- `areaM2` - обязательное, положительное число
-- `country` - опциональное, по умолчанию "CZ"
-- `lat` - опциональное, диапазон -90.0 до 90.0
-- `lng` - опциональное, диапазон -180.0 до 180.0
-- `roomsCount`, `totalFloors` - опциональные, положительные числа
-- `balconyAreaM2`, `cellarAreaM2` - опциональные, положительные числа
-- `parkingType` - опциональное: `NONE`, `STREET`, `GARAGE`, `GARAGE_SPACE`, `PRIVATE_SPOT`
+| Поле | Тип | Обязательное | Валидация |
+|------|-----|-------------|-----------|
+| ownerUserId | UUID | да | — |
+| type | enum | да | `APARTMENT`, `HOUSE`, `ROOM`, `COMMERCIAL`, `LAND`, `OTHER` |
+| country | string | нет | max 2, по умолчанию `CZ` |
+| city | string | да | max 128 |
+| district | string | нет | max 128 |
+| street | string | нет | max 255 |
+| houseNumber | string | нет | max 32 |
+| addressText | string | нет | max 512 |
+| lat | BigDecimal | нет | -90.0 ... 90.0 |
+| lng | BigDecimal | нет | -180.0 ... 180.0 |
+| dispozice | string | нет | max 16 |
+| roomsCount | int | нет | положительное |
+| floor | int | нет | — |
+| totalFloors | int | нет | положительное |
+| areaM2 | BigDecimal | да | положительное |
+| balconyAreaM2 | BigDecimal | нет | положительное |
+| cellarAreaM2 | BigDecimal | нет | положительное |
+| hasBalcony..hasElevator | boolean | нет | по умолчанию `false` |
+| parkingType | enum | нет | `NONE`, `STREET`, `GARAGE`, `GARAGE_SPACE`, `PRIVATE_SPOT` |
 
-**Ответ:** `200 OK` с `PropertyResponse` или `400 Bad Request`
+**Response:** `200 OK` с `PropertyResponse`
 
-#### 2. Получение всех недвижимостей
-```http
-GET /api/properties
-```
+### GET /api/properties
 
-**Ответ:** `200 OK` со списком `PropertyResponse[]`
+Получение всех объектов.
 
-#### 3. Получение недвижимости по ID
-```http
-GET /api/properties/{id}
-```
+**Response:** `200 OK` с `PropertyResponse[]`
 
-**Ответ:** `200 OK` с `PropertyResponse` или `404 Not Found`
+### GET /api/properties/{id}
 
-#### 4. Поиск по городу
-```http
-GET /api/properties/search?city=Прага
-```
+Получение по ID.
 
-**Ответ:** `200 OK` со списком `PropertyResponse[]`
+**Response:** `200 OK` с `PropertyResponse` или `404`
 
-#### 5. Обновление недвижимости (PUT)
-```http
-PUT /api/properties/{id}
-Content-Type: application/json
+### GET /api/properties/search?city={city}
 
-{
-  "city": "Брно",
-  "areaM2": 50.0,
-  "hasBalcony": false
-}
-```
+Поиск по городу (нормализованный, без учёта диакритики).
 
-**Валидация:** Все поля опциональные, но с валидацией если указаны
+**Response:** `200 OK` с `PropertyResponse[]`
 
-**Ответ:** `200 OK` с обновленным `PropertyResponse` или `404 Not Found`
+### PUT /api/properties/{id}
 
-#### 6. Частичное обновление (PATCH)
-```http
-PATCH /api/properties/{id}
-Content-Type: application/json
+Полное обновление (все поля опциональные, обновляются только переданные).
 
-{
-  "city": "Острава"
-}
-```
+**Request Body:** поля из `UpdatePropertyRequest` (все поля `CreatePropertyRequest` кроме `ownerUserId` и `type`).
 
-**Ответ:** `200 OK` с обновленным `PropertyResponse` или `404 Not Found`
+**Response:** `200 OK` с `PropertyResponse` или `404`
 
-#### 7. Удаление недвижимости (Soft Delete)
-```http
-DELETE /api/properties/{id}
-```
+### PATCH /api/properties/{id}
 
-**Ответ:** `204 No Content` или `404 Not Found`
+Частичное обновление. Тело запроса идентично PUT.
 
----
+**Response:** `200 OK` с `PropertyResponse` или `404`
 
-## Property Media API
+### DELETE /api/properties/{id}
 
-Медиа (фото и видео) привязаны к недвижимости. Поддерживается загрузка файлов и добавление по URL.
+Soft delete (Hibernate `@SQLDelete` — выполняет `UPDATE SET deleted_at`).
 
-### Базовый путь: `/api/properties/{id}/media`
+**Response:** `204 No Content` или `404`
 
-#### 1. Загрузка файла (Multipart)
-```http
-POST /api/properties/{id}/media/upload
-Content-Type: multipart/form-data
+### PropertyResponse
 
-file: (binary)
-type: PHOTO | VIDEO
-```
-
-**Параметры:**
-- `file` - файл (обязательный). Фото: до 10MB, видео: до 100MB (настраивается в application.properties)
-- `type` - обязательный: `PHOTO`, `VIDEO`
-
-**Ответ:** `200 OK` с `PropertyMediaResponse` или `404 Not Found`
-
-**Примечание:** Для фото автоматически генерируется превью (max 800x600).
-
-#### 2. Добавление медиа по URL
-```http
-POST /api/properties/{id}/media
-Content-Type: application/json
-
-{
-  "type": "PHOTO",
-  "url": "https://example.com/photo.jpg",
-  "previewUrl": "https://example.com/preview.jpg",
-  "sortOrder": 0
-}
-```
-
-**Валидация:**
-- `type` - обязательное: `PHOTO`, `VIDEO`
-- `url` - обязательное
-- `previewUrl` - опциональное
-- `sortOrder` - опциональное, >= 0 (если не указан - следующий по порядку)
-
-**Ответ:** `200 OK` с `PropertyMediaResponse` или `404 Not Found`
-
-#### 3. Получение медиа недвижимости
-```http
-GET /api/properties/{id}/media
-```
-
-**Ответ:** `200 OK` со списком `PropertyMediaResponse[]` (отсортированы по sortOrder)
-
-#### 4. Изменение порядка медиа
-```http
-PUT /api/properties/{id}/media/reorder
-Content-Type: application/json
-
-{
-  "mediaIds": ["uuid1", "uuid2", "uuid3"]
-}
-```
-
-**Валидация:**
-- `mediaIds` - непустой список UUID всех медиа данной недвижимости в желаемом порядке
-
-**Ответ:** `200 OK` со списком `PropertyMediaResponse[]` или `400 Bad Request`
-
-#### 5. Обновление медиа (previewUrl, sortOrder)
-```http
-PATCH /api/properties/{id}/media/{mediaId}
-Content-Type: application/json
-
-{
-  "previewUrl": "https://example.com/new-preview.jpg",
-  "sortOrder": 1
-}
-```
-
-**Валидация:** Оба поля опциональные. `sortOrder` >= 0.
-
-**Ответ:** `200 OK` с `PropertyMediaResponse` или `404 Not Found`
-
-#### 6. Удаление медиа
-```http
-DELETE /api/properties/{id}/media/{mediaId}
-```
-
-**Действие:** Удаляет запись в БД и физические файлы (если были загружены).
-
-**Ответ:** `204 No Content` или `404 Not Found`
-
-### PropertyMediaResponse структура
-```json
-{
-  "id": "uuid",
-  "propertyId": "uuid",
-  "type": "PHOTO",
-  "url": "/uploads/properties/.../original.jpg",
-  "previewUrl": "/uploads/properties/.../preview.jpg",
-  "sortOrder": 0,
-  "createdAt": "2026-02-04T10:00:00Z"
-}
-```
-
-### Конфигурация хранения файлов (application.properties)
-```
-file.storage.path=uploads/properties
-file.storage.max-size-photo=10485760
-file.storage.max-size-video=104857600
-file.storage.preview.max-width=800
-file.storage.preview.max-height=600
-file.storage.max-media-per-property=50
-```
-
-### PropertyResponse структура
 ```json
 {
   "id": "uuid",
   "ownerUserId": "uuid",
   "type": "APARTMENT",
   "country": "CZ",
-  "city": "Прага",
-  "district": "Прага 1",
-  "street": "Вацлавская площадь",
+  "city": "Praha",
+  "district": "Praha 1",
+  "street": "Vaclavske namesti",
   "houseNumber": "1",
-  "addressText": "Вацлавская площадь 1, Прага 1",
+  "addressText": "Vaclavske namesti 1, Praha 1",
   "lat": 50.0833,
   "lng": 14.4167,
   "dispozice": "2+kk",
@@ -446,18 +392,145 @@ file.storage.max-media-per-property=50
 }
 ```
 
+### Legacy-эндпоинты (deprecated)
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| GET | `/api/properties/legacy` | Получение всех (возвращает `PropertyDTO`) |
+| GET | `/api/properties/legacy/{id}` | Получение по ID |
+| POST | `/api/properties/legacy` | Создание |
+| PUT | `/api/properties/legacy/{id}` | Обновление |
+| DELETE | `/api/properties/legacy/{id}` | Удаление |
+
+---
+
+## Property Media API
+
+Базовый путь: `/api/properties/{propertyId}/media`
+
+Управление фото, видео и 3D-турами для объектов недвижимости.
+
+### POST /api/properties/{id}/media/upload
+
+Загрузка файла (multipart).
+
+**Content-Type:** `multipart/form-data`
+
+| Параметр | Тип | Обязательное | Описание |
+|----------|-----|-------------|----------|
+| file | file | да | Файл (фото до 10MB, видео до 100MB) |
+| type | enum | да | `PHOTO`, `VIDEO`, `TOUR3D` |
+
+Для фото автоматически генерируется превью (max 800x600). Максимум 50 медиа на объект.
+
+Допустимые MIME-типы: `image/jpeg`, `image/png`, `image/webp`, `video/mp4`, `video/webm`, `application/*`, `model/*`.
+
+**Response:** `200 OK` с `PropertyMediaResponse`
+
+### POST /api/properties/{id}/media
+
+Добавление медиа по URL.
+
+**Request Body:**
+```json
+{
+  "type": "PHOTO",
+  "url": "https://example.com/photo.jpg",
+  "previewUrl": "https://example.com/preview.jpg",
+  "sortOrder": 0
+}
+```
+
+| Поле | Тип | Обязательное | Валидация |
+|------|-----|-------------|-----------|
+| type | enum | да | `PHOTO`, `VIDEO`, `TOUR3D` |
+| url | string | да | `@NotBlank` |
+| previewUrl | string | нет | — |
+| sortOrder | int | нет | >= 0 |
+
+**Response:** `200 OK` с `PropertyMediaResponse`
+
+### GET /api/properties/{id}/media
+
+Получение всех медиа объекта (отсортированы по `sortOrder`).
+
+**Response:** `200 OK` с `PropertyMediaResponse[]`
+
+### PUT /api/properties/{id}/media/reorder
+
+Изменение порядка медиа.
+
+**Request Body:**
+```json
+{
+  "mediaIds": ["uuid1", "uuid2", "uuid3"]
+}
+```
+
+| Поле | Тип | Валидация |
+|------|-----|-----------|
+| mediaIds | UUID[] | `@NotEmpty`, все UUID должны принадлежать данному объекту |
+
+**Response:** `200 OK` с `PropertyMediaResponse[]`
+
+### PATCH /api/properties/{id}/media/{mediaId}
+
+Обновление медиа (previewUrl и/или sortOrder).
+
+**Request Body:**
+```json
+{
+  "previewUrl": "https://example.com/new-preview.jpg",
+  "sortOrder": 1
+}
+```
+
+**Response:** `200 OK` с `PropertyMediaResponse`
+
+### DELETE /api/properties/{id}/media/{mediaId}
+
+Удаление медиа (запись из БД + физические файлы).
+
+**Response:** `204 No Content`
+
+### PropertyMediaResponse
+
+```json
+{
+  "id": "uuid",
+  "propertyId": "uuid",
+  "type": "PHOTO",
+  "url": "/uploads/properties/.../media.jpg",
+  "previewUrl": "/uploads/properties/.../preview.jpg",
+  "sortOrder": 0,
+  "createdAt": "2026-02-04T10:00:00Z"
+}
+```
+
+### Legacy-эндпоинты медиа (deprecated)
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| POST | `/api/properties/{id}/media/legacy` | Добавление (возвращает `PropertyMediaDTO`) |
+| GET | `/api/properties/{id}/media/legacy` | Получение |
+| DELETE | `/api/properties/media/{mediaId}` | Удаление |
+
 ---
 
 ## Listing API
 
-### Базовый путь: `/api/listings`
+Базовый путь: `/api/listings`
 
-#### 1. Создание объявления
-```http
-POST /api/listings
-X-User-Id: {owner-uuid}
-Content-Type: application/json
+Управление объявлениями об аренде.
 
+### POST /api/listings
+
+Создание объявления.
+
+**Заголовок:** `X-User-Id: {uuid}` — UUID владельца (временное решение, будет заменено на извлечение из JWT).
+
+**Request Body:**
+```json
 {
   "propertyId": "uuid",
   "rentMonthly": 15000,
@@ -470,36 +543,39 @@ Content-Type: application/json
 }
 ```
 
-**Валидация:**
-- `propertyId` - обязательное, UUID существующего property
-- `rentMonthly` - обязательное, положительное число
-- `depositKauce`, `utilitiesMonthly` - опциональные, положительные числа
-- `maxTenants` - опциональное, положительное число (Short)
-- `petsAllowed`, `smokingAllowed`, `childrenAllowed` - опциональные boolean
+| Поле | Тип | Обязательное | Валидация |
+|------|-----|-------------|-----------|
+| propertyId | UUID | да | — |
+| rentMonthly | int | да | положительное |
+| depositKauce | int | нет | положительное |
+| utilitiesMonthly | int | нет | положительное |
+| petsAllowed | boolean | нет | — |
+| smokingAllowed | boolean | нет | — |
+| childrenAllowed | boolean | нет | — |
+| maxTenants | short | нет | положительное |
 
-**Заголовок:** `X-User-Id` - UUID владельца (временно, позже будет из JWT)
+Объявление создаётся со статусом `DRAFT` и `paymentStatus = UNPAID`.
 
-**Ответ:** `200 OK` с `ListingResponse` или `400 Bad Request`
+**Response:** `200 OK` с `ListingResponse`
 
-#### 2. Получение всех объявлений
-```http
-GET /api/listings
-```
+### GET /api/listings
 
-**Ответ:** `200 OK` со списком `ListingResponse[]`
+Получение всех объявлений.
 
-#### 3. Получение объявления по ID
-```http
-GET /api/listings/{id}
-```
+**Response:** `200 OK` с `ListingResponse[]`
 
-**Ответ:** `200 OK` с `ListingResponse` или `404 Not Found`
+### GET /api/listings/{id}
 
-#### 4. Полное обновление объявления (PUT)
-```http
-PUT /api/listings/{id}
-Content-Type: application/json
+Получение по ID.
 
+**Response:** `200 OK` с `ListingResponse` или `404`
+
+### PUT /api/listings/{id}
+
+Полное обновление (все поля опциональные).
+
+**Request Body:**
+```json
 {
   "status": "PUBLISHED",
   "paymentStatus": "SUCCEDED",
@@ -513,86 +589,74 @@ Content-Type: application/json
 }
 ```
 
-**Валидация:**
-- Все поля опциональные
-- `status` - опциональное: `DRAFT`, `PUBLISHED`, `RENTED`, `ARCHIVED`
-- `paymentStatus` - опциональное: `UNPAID`, `CREATED`, `PENDING`, `SUCCEDED`, `FAILED`, `CANCELED`, `REFUNDED`
-- Числовые поля - положительные, если указаны
+| Поле | Тип | Валидация |
+|------|-----|-----------|
+| status | enum | `DRAFT`, `PUBLISHED`, `RENTED`, `ARCHIVED` |
+| paymentStatus | enum | `UNPAID`, `CREATED`, `PENDING`, `SUCCEDED`, `FAILED`, `CANCELED`, `REFUNDED` |
+| rentMonthly | int | положительное |
+| depositKauce | int | положительное |
+| utilitiesMonthly | int | положительное |
+| petsAllowed | boolean | — |
+| smokingAllowed | boolean | — |
+| childrenAllowed | boolean | — |
+| maxTenants | short | положительное |
 
-**Ответ:** `200 OK` с обновленным `ListingResponse` или `404 Not Found`
+**Response:** `200 OK` с `ListingResponse` или `404`
 
-#### 5. Частичное обновление (PATCH)
-```http
-PATCH /api/listings/{id}
-Content-Type: application/json
+### PATCH /api/listings/{id}
 
-{
-  "status": "PUBLISHED",
-  "rentMonthly": 17000
-}
-```
+Частичное обновление. Тело запроса идентично PUT.
 
-**Ответ:** `200 OK` с обновленным `ListingResponse` или `404 Not Found`
+**Response:** `200 OK` с `ListingResponse` или `404`
 
-#### 6. Удаление объявления
-```http
-DELETE /api/listings/{id}
-```
+### DELETE /api/listings/{id}
 
-**Ответ:** `204 No Content` или `404 Not Found`
+Hard delete (удаление из БД).
 
-#### 7. Публикация объявления
-```http
-POST /api/listings/{id}/publish
-```
+**Response:** `204 No Content` или `404`
 
-**Действие:** Изменяет статус на `PUBLISHED` и устанавливает `publishedAt`
+### POST /api/listings/{id}/publish
 
-**Ответ:** `200 OK` или `404 Not Found`
+Публикация объявления. Устанавливает `status = PUBLISHED` и `publishedAt`.
 
-#### 8. Снятие с публикации
-```http
-POST /api/listings/{id}/unpublish
-```
+**Response:** `200 OK`
 
-**Действие:** Изменяет статус на `DRAFT` и очищает `publishedAt`
+### POST /api/listings/{id}/unpublish
 
-**Ответ:** `200 OK` с `ListingResponse` или `400 Bad Request` (если не опубликовано)
+Снятие с публикации. Возвращает статус в `DRAFT`, очищает `publishedAt`.
 
-#### 9. Архивирование объявления
-```http
-POST /api/listings/{id}/archive
-```
+**Response:** `200 OK` с `ListingResponse` или `400` (если не было опубликовано)
 
-**Действие:** Изменяет статус на `ARCHIVED`
+### POST /api/listings/{id}/archive
 
-**Ответ:** `200 OK` с `ListingResponse` или `404 Not Found`
+Архивирование. Устанавливает `status = ARCHIVED`.
 
-#### 10. Поиск по статусу
-```http
-GET /api/listings/search/status?status=PUBLISHED
-```
+**Response:** `200 OK` с `ListingResponse`
 
-**Параметры:**
-- `status` - обязательный: `DRAFT`, `PUBLISHED`, `RENTED`, `ARCHIVED`
+### GET /api/listings/search/status?status={status}
 
-**Ответ:** `200 OK` со списком `ListingResponse[]`
+Поиск по статусу.
 
-#### 11. Поиск по владельцу
-```http
-GET /api/listings/search/owner?ownerId={uuid}
-```
+| Параметр | Значения |
+|----------|----------|
+| status | `DRAFT`, `PUBLISHED`, `RENTED`, `ARCHIVED` |
 
-**Ответ:** `200 OK` со списком `ListingResponse[]`
+**Response:** `200 OK` с `ListingResponse[]`
 
-#### 12. Поиск по недвижимости
-```http
-GET /api/listings/search/property?propertyId={uuid}
-```
+### GET /api/listings/search/owner?ownerId={uuid}
 
-**Ответ:** `200 OK` со списком `ListingResponse[]`
+Поиск по владельцу.
 
-### ListingResponse структура
+**Response:** `200 OK` с `ListingResponse[]`
+
+### GET /api/listings/search/property?propertyId={uuid}
+
+Поиск по объекту недвижимости.
+
+**Response:** `200 OK` с `ListingResponse[]`
+
+### ListingResponse
+
 ```json
 {
   "id": "uuid",
@@ -615,155 +679,90 @@ GET /api/listings/search/property?propertyId={uuid}
 
 ---
 
-## Архитектура и организация
+## Перечисления (Enums)
 
-### Структура компонентов
-
-#### DTO (Data Transfer Objects)
-DTO организованы по доменам в подпапках `dto/`:
-
-```
-dto/
-├── user/           — UserResponse, CreateUserRequest, UpdateUserRequest, ChangePasswordRequest
-├── property/       — PropertyResponse, PropertyDTO, CreatePropertyRequest, UpdatePropertyRequest
-├── propertymedia/  — PropertyMediaResponse, PropertyMediaDTO, CreatePropertyMediaRequest, 
-│                     UpdatePropertyMediaRequest, ReorderMediaRequest
-└── listing/        — ListingResponse, CreateListingRequest, UpdateListingRequest, PatchListingRequest
-```
-
-Используются Java records для передачи данных между слоями:
-
-- **Create*Request** - для создания новых ресурсов (обязательные поля с валидацией)
-- **Update*Request** - для полного обновления (все поля опциональные)
-- **Patch*Request** - для частичного обновления (все поля опциональные)
-- **Response** - для ответов API (все поля только для чтения)
-
-Импорты: `samoprodej.samoprodej.dto.{domain}.{ClassName}` (например, `samoprodej.samoprodej.dto.propertymedia.PropertyMediaResponse`)
-
-#### Services
-Содержат бизнес-логику:
-- Используют `@Transactional` для управления транзакциями
-- `@Transactional(readOnly = true)` для read-only операций
-- Логирование через `@Slf4j`
-- Обработка ошибок через `RuntimeException`
-
-#### Controllers
-REST API эндпоинты:
-- Используют `@Valid` для валидации DTO
-- Возвращают `ResponseEntity` для контроля HTTP статусов
-- Обработка ошибок через try-catch
-
-#### Mappers
-Преобразование между Entity и DTO:
-- `toResponse(Entity)` - Entity → Response DTO
-- `toEntity(CreateRequest)` - CreateRequest → Entity
-- `updateEntityFromDto(UpdateRequest, Entity)` - обновление Entity из DTO
-
-### Особенности реализации
-
-#### Soft Delete
-- **User**: ручное обновление `deletedAt` через сервис
-- **Property**: автоматический soft delete через `@SQLDelete` и `@SQLRestriction`
-
-#### Валидация
-Все DTO используют Jakarta Validation:
-- `@NotNull`, `@NotBlank` - обязательные поля
-- `@Email` - валидация email
-- `@Size` - ограничение длины строк
-- `@Positive` - положительные числа
-- `@DecimalMin`, `@DecimalMax` - диапазоны для BigDecimal
-
-#### Статусы и Enums
-- **UserStatus**: `ACTIVE`, `BLOCKED`, `DELETED`
-- **ListingStatus**: `DRAFT`, `PUBLISHED`, `RENTED`, `ARCHIVED`
-- **PaymentStatus**: `UNPAID`, `CREATED`, `PENDING`, `SUCCEDED`, `FAILED`, `CANCELED`, `REFUNDED`
-- **Role**: `TENANT`, `OWNER`, `ADMIN`
-- **PropertyType**: `APARTMENT`, `HOUSE`, `ROOM`, `COMMERCIAL`, `LAND`, `OTHER`
-- **MediaType**: `PHOTO`, `VIDEO`
+| Enum | Значения |
+|------|----------|
+| Role | `TENANT`, `OWNER`, `ADMIN` |
+| UserStatus | `ACTIVE`, `BLOCKED`, `DELETED` |
+| AuthProvider | `LOCAL`, `BANKID`, `NEOID` |
+| Language | `CS`, `UA`, `EN`, `RU` |
+| PropertyType | `APARTMENT`, `HOUSE`, `ROOM`, `COMMERCIAL`, `LAND`, `OTHER` |
+| ListingStatus | `DRAFT`, `PUBLISHED`, `RENTED`, `ARCHIVED` |
+| MediaType | `PHOTO`, `VIDEO`, `TOUR3D` |
+| ParkingType | `NONE`, `STREET`, `GARAGE`, `GARAGE_SPACE`, `PRIVATE_SPOT` |
+| PaymentStatus | `UNPAID`, `CREATED`, `PENDING`, `SUCCEDED`, `FAILED`, `CANCELED`, `REFUNDED` |
+| PaymentProvider | `STRIPE`, `GPWEBPAY`, `GOPAY`, `COMGATE` |
+| PaymentPurpose | `OWNER_VERIFICATION`, `LISTING_PROMOTION`, `DEAL_COMMISSION` |
+| Currency | `CZK`, `USD` |
+| PromotionType | `TOP_7_DAYS`, `FEATURED_30_DAYS`, `URGENT`, `HIGHLIGHT` |
+| PropertyStatus | `DRAFT`, `ACTIVE`, `ARCHIVED` (определён, но не используется) |
 
 ---
 
-## Примеры использования
+## Примеры использования (curl)
 
-### Пример 1: Создание пользователя и недвижимости
+### Регистрация и получение токена
 
 ```bash
-# 1. Создать пользователя-владельца
-curl -X POST http://localhost:8082/api/users \
+curl -X POST http://localhost:8082/api/auth/register \
   -H "Content-Type: application/json" \
+  -c cookies.txt \
   -d '{
     "email": "owner@example.com",
     "password": "password123",
-    "role": "OWNER",
-    "authProvider": "LOCAL",
-    "preferredLang": "CS"
+    "firstName": "Jan",
+    "lastName": "Novak",
+    "role": "OWNER"
   }'
+```
 
-# Ответ содержит UUID пользователя, используем его дальше
-# ownerId = "123e4567-e89b-12d3-a456-426614174000"
+### Создание объекта с JWT
 
-# 2. Создать недвижимость
+```bash
 curl -X POST http://localhost:8082/api/properties \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <access_token>" \
   -d '{
-    "ownerUserId": "123e4567-e89b-12d3-a456-426614174000",
+    "ownerUserId": "<user-uuid>",
     "type": "APARTMENT",
-    "city": "Прага",
+    "city": "Praha",
     "areaM2": 50.0
   }'
+```
 
-# Ответ содержит UUID недвижимости
-# propertyId = "223e4567-e89b-12d3-a456-426614174000"
+### Загрузка фото
 
-# 3. Создать объявление
+```bash
+curl -X POST http://localhost:8082/api/properties/<property-uuid>/media/upload \
+  -H "Authorization: Bearer <access_token>" \
+  -F "file=@photo.jpg" \
+  -F "type=PHOTO"
+```
+
+### Создание и публикация объявления
+
+```bash
+# Создание (DRAFT)
 curl -X POST http://localhost:8082/api/listings \
   -H "Content-Type: application/json" \
-  -H "X-User-Id: 123e4567-e89b-12d3-a456-426614174000" \
+  -H "Authorization: Bearer <access_token>" \
+  -H "X-User-Id: <owner-uuid>" \
   -d '{
-    "propertyId": "223e4567-e89b-12d3-a456-426614174000",
+    "propertyId": "<property-uuid>",
     "rentMonthly": 15000,
     "depositKauce": 30000
   }'
+
+# Публикация
+curl -X POST http://localhost:8082/api/listings/<listing-uuid>/publish \
+  -H "Authorization: Bearer <access_token>"
 ```
 
-### Пример 2: Публикация объявления
+### Обновление refresh-токена
 
 ```bash
-# 1. Создать объявление (статус DRAFT по умолчанию)
-# ... (см. пример 1)
-
-# 2. Опубликовать объявление
-curl -X POST http://localhost:8082/api/listings/{listing-id}/publish
-
-# Статус изменен на PUBLISHED, установлен publishedAt
+curl -X POST http://localhost:8082/api/auth/refresh \
+  -b cookies.txt \
+  -c cookies.txt
 ```
-
-### Пример 3: Поиск опубликованных объявлений
-
-```bash
-curl http://localhost:8082/api/listings/search/status?status=PUBLISHED
-```
-
----
-
-## Обработка ошибок
-
-### Валидация
-При ошибках валидации возвращается `400 Bad Request` без деталей ошибки.
-
-### Ресурс не найден
-При отсутствии ресурса возвращается `404 Not Found`.
-
-### Внутренние ошибки
-При внутренних ошибках возвращается `500 Internal Server Error`.
-
----
-
-## Безопасность
-
-⚠️ **Важно:** В текущей версии Spring Security настроен с автоматически сгенерированным паролем для разработки. Все эндпоинты доступны без аутентификации (кроме заголовка `X-User-Id` для создания объявлений).
-
-Для продакшена необходимо:
-1. Настроить JWT аутентификацию
-2. Добавить авторизацию по ролям
-3. Защитить чувствительные эндпоинты
