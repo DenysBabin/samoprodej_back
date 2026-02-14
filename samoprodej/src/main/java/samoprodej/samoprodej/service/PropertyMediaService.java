@@ -12,6 +12,8 @@ import samoprodej.samoprodej.dto.propertymedia.UpdatePropertyMediaRequest;
 import samoprodej.samoprodej.entity.Property;
 import samoprodej.samoprodej.entity.PropertyMedia;
 import samoprodej.samoprodej.enums.MediaType;
+import samoprodej.samoprodej.exception.BusinessException;
+import samoprodej.samoprodej.exception.NotFoundException;
 import samoprodej.samoprodej.mapper.PropertyMediaMapper;
 import samoprodej.samoprodej.repository.PropertyMediaRepository;
 import samoprodej.samoprodej.repository.PropertyRepository;
@@ -36,7 +38,7 @@ public class PropertyMediaService {
         log.info("Uploading media file for property ID: {}, type: {}", propertyId, type);
 
         Property property = propertyRepository.findById(propertyId)
-                .orElseThrow(() -> new RuntimeException("Property not found with id: " + propertyId));
+                .orElseThrow(() -> new NotFoundException("Property not found with id: " + propertyId));
 
         // Check max media count
         long mediaCount = mediaRepository.findByPropertyIdOrderBySortOrderAsc(propertyId).size();
@@ -83,7 +85,7 @@ public class PropertyMediaService {
         log.info("Adding media from URL for property ID: {}", propertyId);
 
         Property property = propertyRepository.findById(propertyId)
-                .orElseThrow(() -> new RuntimeException("Property not found with id: " + propertyId));
+                .orElseThrow(() -> new NotFoundException("Property not found with id: " + propertyId));
 
         // Calculate next sortOrder if not provided
         Integer sortOrder;
@@ -97,7 +99,7 @@ public class PropertyMediaService {
             boolean conflict = existing.stream()
                     .anyMatch(m -> m.getSortOrder().equals(sortOrderToCheck));
             if (conflict) {
-                throw new RuntimeException("Sort order " + sortOrderToCheck + " already exists for this property");
+                throw new BusinessException("Sort order " + sortOrderToCheck + " already exists for this property");
             }
             sortOrder = sortOrderToCheck;
         }
@@ -114,7 +116,7 @@ public class PropertyMediaService {
     @Transactional(readOnly = true)
     public List<PropertyMediaResponse> getMediaForProperty(UUID propertyId) {
         if (!propertyRepository.existsById(propertyId)) {
-            throw new RuntimeException("Property not found with id: " + propertyId);
+            throw new NotFoundException("Property not found with id: " + propertyId);
         }
         return mediaRepository.findByPropertyIdOrderBySortOrderAsc(propertyId).stream()
                 .map(mapper::toResponse)
@@ -125,7 +127,7 @@ public class PropertyMediaService {
         log.info("Reordering media for property ID: {}", propertyId);
 
         Property property = propertyRepository.findById(propertyId)
-                .orElseThrow(() -> new RuntimeException("Property not found with id: " + propertyId));
+                .orElseThrow(() -> new NotFoundException("Property not found with id: " + propertyId));
 
         List<UUID> mediaIds = request.mediaIds();
         List<PropertyMedia> allMedia = mediaRepository.findByPropertyIdOrderBySortOrderAsc(propertyId);
@@ -136,7 +138,7 @@ public class PropertyMediaService {
                 .collect(Collectors.toList());
 
         if (!propertyMediaIds.containsAll(mediaIds) || mediaIds.size() != propertyMediaIds.size()) {
-            throw new RuntimeException("Some media IDs do not belong to this property");
+            throw new BusinessException("Some media IDs do not belong to this property");
         }
 
         // Update sortOrder based on the order in the list
@@ -145,7 +147,7 @@ public class PropertyMediaService {
             PropertyMedia media = allMedia.stream()
                     .filter(m -> m.getId().equals(mediaId))
                     .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Media not found: " + mediaId));
+                    .orElseThrow(() -> new NotFoundException("Media not found: " + mediaId));
             media.setSortOrder(i);
         }
 
@@ -161,7 +163,7 @@ public class PropertyMediaService {
         log.info("Updating media ID: {}", mediaId);
 
         PropertyMedia media = mediaRepository.findById(mediaId)
-                .orElseThrow(() -> new RuntimeException("Media not found with id: " + mediaId));
+                .orElseThrow(() -> new NotFoundException("Media not found with id: " + mediaId));
 
         // If sortOrder is being changed, check for conflicts
         if (request.sortOrder() != null && !request.sortOrder().equals(media.getSortOrder())) {
@@ -170,7 +172,7 @@ public class PropertyMediaService {
             boolean conflict = existing.stream()
                     .anyMatch(m -> !m.getId().equals(mediaId) && m.getSortOrder().equals(request.sortOrder()));
             if (conflict) {
-                throw new RuntimeException("Sort order " + request.sortOrder() + " already exists for this property");
+                throw new BusinessException("Sort order " + request.sortOrder() + " already exists for this property");
             }
         }
 
@@ -185,7 +187,7 @@ public class PropertyMediaService {
         log.warn("Deleting media ID: {}", mediaId);
 
         PropertyMedia media = mediaRepository.findById(mediaId)
-                .orElseThrow(() -> new RuntimeException("Media not found with id: " + mediaId));
+                .orElseThrow(() -> new NotFoundException("Media not found with id: " + mediaId));
 
         UUID propertyId = media.getProperty().getId();
 

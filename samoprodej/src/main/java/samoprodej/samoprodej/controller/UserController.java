@@ -22,11 +22,7 @@ public class UserController {
 
     @PostMapping
     public ResponseEntity<UserResponse> create(@Valid @RequestBody CreateUserRequest request) {
-        try {
-            return ResponseEntity.ok(service.create(request));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
+        return ResponseEntity.ok(service.create(request));
     }
 
     @GetMapping
@@ -36,87 +32,50 @@ public class UserController {
 
     @GetMapping("/{id}")
     public ResponseEntity<UserResponse> getById(@PathVariable UUID id) {
-        try {
-            return ResponseEntity.ok(service.getById(id));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(service.getById(id));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<UserResponse> update(@PathVariable UUID id,
                                                @Valid @RequestBody UpdateUserRequest request) {
-        try {
-            return ResponseEntity.ok(service.update(id, request));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(service.update(id, request));
     }
 
     @PatchMapping("/{id}")
     public ResponseEntity<UserResponse> patch(@PathVariable UUID id,
                                               @Valid @RequestBody UpdateUserRequest request) {
-        try {
-            return ResponseEntity.ok(service.update(id, request));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(service.update(id, request));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        try {
-            service.delete(id);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/activate")
     public ResponseEntity<UserResponse> activate(@PathVariable UUID id) {
-        try {
-            return ResponseEntity.ok(service.activate(id));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(service.activate(id));
     }
 
     @PostMapping("/{id}/block")
     public ResponseEntity<UserResponse> block(@PathVariable UUID id) {
-        try {
-            return ResponseEntity.ok(service.block(id));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(service.block(id));
     }
 
     @PostMapping("/{id}/change-password")
     public ResponseEntity<Void> changePassword(@PathVariable UUID id,
                                                @Valid @RequestBody ChangePasswordRequest request) {
-        try {
-            service.changePassword(id, request);
-            return ResponseEntity.ok().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
+        service.changePassword(id, request);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/search/email")
     public ResponseEntity<UserResponse> searchByEmail(@RequestParam String email) {
-        try {
-            return ResponseEntity.ok(service.searchByEmail(email));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(service.searchByEmail(email));
     }
 
     @GetMapping("/search/phone")
     public ResponseEntity<UserResponse> searchByPhone(@RequestParam String phone) {
-        try {
-            return ResponseEntity.ok(service.searchByPhone(phone));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(service.searchByPhone(phone));
     }
 }

@@ -12,6 +12,9 @@ import samoprodej.samoprodej.entity.User;
 import samoprodej.samoprodej.enums.UserStatus;
 import samoprodej.samoprodej.mapper.UserMapper;
 import samoprodej.samoprodej.repository.UserRepository;
+import samoprodej.samoprodej.enums.ErrorCode;
+import samoprodej.samoprodej.exception.BusinessException;
+import samoprodej.samoprodej.exception.NotFoundException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,11 +35,11 @@ public class UserService {
 
         // Check uniqueness
         if (repository.existsByEmail(request.email())) {
-            throw new RuntimeException("User with email " + request.email() + " already exists");
+            throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS, "User with email " + request.email() + " already exists");
         }
         if (request.phone() != null && !request.phone().isEmpty()) {
             repository.findByPhone(request.phone()).ifPresent(user -> {
-                throw new RuntimeException("User with phone " + request.phone() + " already exists");
+                throw new BusinessException(ErrorCode.PHONE_ALREADY_EXISTS, "User with phone " + request.phone() + " already exists");
             });
         }
 
@@ -54,7 +57,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserResponse getById(UUID id) {
         User user = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException(ErrorCode.NOT_FOUND, "User not found with id: " + id));
         return mapper.toDto(user);
     }
 
@@ -68,12 +71,12 @@ public class UserService {
     public UserResponse update(UUID id, UpdateUserRequest request) {
         log.info("Updating user ID: {}", id);
         User existing = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("User not found with id: " + id));
 
         // Check email uniqueness if email is being changed
         if (request.email() != null && !request.email().equals(existing.getEmail())) {
             if (repository.existsByEmail(request.email())) {
-                throw new RuntimeException("User with email " + request.email() + " already exists");
+                throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS, "User with email " + request.email() + " already exists");
             }
         }
 
@@ -81,7 +84,7 @@ public class UserService {
         if (request.phone() != null && !request.phone().equals(existing.getPhone())) {
             repository.findByPhone(request.phone()).ifPresent(user -> {
                 if (!user.getId().equals(id)) {
-                    throw new RuntimeException("User with phone " + request.phone() + " already exists");
+                    throw new BusinessException(ErrorCode.PHONE_ALREADY_EXISTS, "User with phone " + request.phone() + " already exists");
                 }
             });
         }
@@ -96,7 +99,7 @@ public class UserService {
     public void delete(UUID id) {
         log.warn("Deleting user ID: {}", id);
         User user = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("User not found with id: " + id));
         user.setDeletedAt(LocalDateTime.now());
         repository.save(user);
     }
@@ -104,7 +107,7 @@ public class UserService {
     public UserResponse activate(UUID id) {
         log.info("Activating user ID: {}", id);
         User user = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("User not found with id: " + id));
         user.setStatus(UserStatus.ACTIVE);
         User updated = repository.save(user);
         return mapper.toDto(updated);
@@ -113,7 +116,7 @@ public class UserService {
     public UserResponse block(UUID id) {
         log.info("Blocking user ID: {}", id);
         User user = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("User not found with id: " + id));
         user.setStatus(UserStatus.BLOCKED);
         User updated = repository.save(user);
         return mapper.toDto(updated);
@@ -122,11 +125,11 @@ public class UserService {
     public void changePassword(UUID id, ChangePasswordRequest request) {
         log.info("Changing password for user ID: {}", id);
         User user = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("User not found with id: " + id));
 
         // Verify old password
         if (!user.getPasswordHash().equals(hashPassword(request.oldPassword()))) {
-            throw new RuntimeException("Invalid old password");
+            throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Invalid old password");
         }
 
         // Set new password
@@ -139,14 +142,14 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserResponse searchByEmail(String email) {
         User user = repository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+                .orElseThrow(() -> new NotFoundException("User not found with email: " + email));
         return mapper.toDto(user);
     }
 
     @Transactional(readOnly = true)
     public UserResponse searchByPhone(String phone) {
         User user = repository.findByPhone(phone)
-                .orElseThrow(() -> new RuntimeException("User not found with phone: " + phone));
+                .orElseThrow(() -> new NotFoundException("User not found with phone: " + phone));
         return mapper.toDto(user);
     }
 

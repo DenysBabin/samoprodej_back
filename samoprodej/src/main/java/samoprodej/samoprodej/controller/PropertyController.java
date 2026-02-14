@@ -36,11 +36,7 @@ public class PropertyController {
 
     @GetMapping("/{id}")
     public ResponseEntity<PropertyResponse> getById(@PathVariable UUID id) {
-        try {
-            return ResponseEntity.ok(service.getById(id));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(service.getById(id));
     }
 
     @GetMapping("/search")
@@ -50,41 +46,25 @@ public class PropertyController {
 
     @PostMapping
     public ResponseEntity<PropertyResponse> create(@Valid @RequestBody CreatePropertyRequest request) {
-        try {
-            return ResponseEntity.ok(service.create(request));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
+        return ResponseEntity.ok(service.create(request));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<PropertyResponse> update(@PathVariable UUID id,
                                                    @Valid @RequestBody UpdatePropertyRequest request) {
-        try {
-            return ResponseEntity.ok(service.update(id, request));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(service.update(id, request));
     }
 
     @PatchMapping("/{id}")
     public ResponseEntity<PropertyResponse> patch(@PathVariable UUID id,
                                                    @Valid @RequestBody UpdatePropertyRequest request) {
-        try {
-            return ResponseEntity.ok(service.update(id, request));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(service.update(id, request));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        try {
-            service.delete(id);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        service.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     // Legacy endpoints for backward compatibility
@@ -97,43 +77,27 @@ public class PropertyController {
     @Deprecated
     @GetMapping("/legacy/{id}")
     public ResponseEntity<PropertyDTO> getByIdLegacy(@PathVariable UUID id) {
-        try {
-            return ResponseEntity.ok(service.getPropertyById(id));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(service.getPropertyById(id));
     }
 
     @Deprecated
     @PostMapping("/legacy")
     public ResponseEntity<PropertyDTO> createLegacy(@Valid @RequestBody PropertyDTO dto) {
-        try {
-            return ResponseEntity.ok(service.createProperty(dto));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
+        return ResponseEntity.ok(service.createProperty(dto));
     }
 
     @Deprecated
     @PutMapping("/legacy/{id}")
     public ResponseEntity<PropertyDTO> updateLegacy(@PathVariable UUID id,
                                                      @Valid @RequestBody PropertyDTO dto) {
-        try {
-            return ResponseEntity.ok(service.updateProperty(id, dto));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(service.updateProperty(id, dto));
     }
 
     @Deprecated
     @DeleteMapping("/legacy/{id}")
     public ResponseEntity<Void> deleteLegacy(@PathVariable UUID id) {
-        try {
-            service.deleteProperty(id);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        service.deleteProperty(id);
+        return ResponseEntity.noContent().build();
     }
 
     // Media endpoints - new implementation
@@ -143,17 +107,8 @@ public class PropertyController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("type") MediaType type
     ) {
-        try {
-            PropertyMediaResponse response = mediaService.uploadMedia(id, file, type);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("not found")) {
-                return ResponseEntity.notFound().build();
-            }
-            return ResponseEntity.badRequest().build();
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
-        }
+        PropertyMediaResponse response = mediaService.uploadMedia(id, file, type);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/media")
@@ -161,28 +116,14 @@ public class PropertyController {
             @PathVariable UUID id,
             @Valid @RequestBody CreatePropertyMediaRequest request
     ) {
-        try {
-            PropertyMediaResponse response = mediaService.addMediaFromUrl(id, request);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("not found")) {
-                return ResponseEntity.notFound().build();
-            }
-            if (e.getMessage().contains("already exists")) {
-                return ResponseEntity.badRequest().build();
-            }
-            return ResponseEntity.badRequest().build();
-        }
+        PropertyMediaResponse response = mediaService.addMediaFromUrl(id, request);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}/media")
     public ResponseEntity<List<PropertyMediaResponse>> getMedia(@PathVariable UUID id) {
-        try {
-            List<PropertyMediaResponse> media = mediaService.getMediaForProperty(id);
-            return ResponseEntity.ok(media);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        List<PropertyMediaResponse> media = mediaService.getMediaForProperty(id);
+        return ResponseEntity.ok(media);
     }
 
     @PutMapping("/{id}/media/reorder")
@@ -190,15 +131,8 @@ public class PropertyController {
             @PathVariable UUID id,
             @Valid @RequestBody ReorderMediaRequest request
     ) {
-        try {
-            List<PropertyMediaResponse> media = mediaService.reorderMedia(id, request);
-            return ResponseEntity.ok(media);
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("not found")) {
-                return ResponseEntity.notFound().build();
-            }
-            return ResponseEntity.badRequest().build();
-        }
+        List<PropertyMediaResponse> media = mediaService.reorderMedia(id, request);
+        return ResponseEntity.ok(media);
     }
 
     @PatchMapping("/{id}/media/{mediaId}")
@@ -207,18 +141,8 @@ public class PropertyController {
             @PathVariable UUID mediaId,
             @Valid @RequestBody UpdatePropertyMediaRequest request
     ) {
-        try {
-            PropertyMediaResponse response = mediaService.updateMedia(mediaId, request);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("not found")) {
-                return ResponseEntity.notFound().build();
-            }
-            if (e.getMessage().contains("already exists")) {
-                return ResponseEntity.badRequest().build();
-            }
-            return ResponseEntity.badRequest().build();
-        }
+        PropertyMediaResponse response = mediaService.updateMedia(mediaId, request);
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}/media/{mediaId}")
@@ -226,12 +150,8 @@ public class PropertyController {
             @PathVariable UUID id,
             @PathVariable UUID mediaId
     ) {
-        try {
-            mediaService.deleteMedia(mediaId);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        mediaService.deleteMedia(mediaId);
+        return ResponseEntity.noContent().build();
     }
 
     // Legacy media endpoints for backward compatibility
@@ -241,31 +161,19 @@ public class PropertyController {
             @PathVariable UUID id,
             @Valid @RequestBody PropertyMediaDTO mediaDto
     ) {
-        try {
-            return ResponseEntity.ok(service.addMedia(id, mediaDto));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(service.addMedia(id, mediaDto));
     }
 
     @Deprecated
     @GetMapping("/{id}/media/legacy")
     public ResponseEntity<List<PropertyMediaDTO>> getMediaLegacy(@PathVariable UUID id) {
-        try {
-            return ResponseEntity.ok(service.getMediaForProperty(id));
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(service.getMediaForProperty(id));
     }
 
     @Deprecated
     @DeleteMapping("/media/{mediaId}")
     public ResponseEntity<Void> deleteMediaLegacy(@PathVariable UUID mediaId) {
-        try {
-            service.deleteMedia(mediaId);
-            return ResponseEntity.noContent().build();
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
+        service.deleteMedia(mediaId);
+        return ResponseEntity.noContent().build();
     }
 }
