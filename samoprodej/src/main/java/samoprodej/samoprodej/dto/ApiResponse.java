@@ -1,10 +1,13 @@
 package samoprodej.samoprodej.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import samoprodej.samoprodej.enums.ErrorCode;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @Builder
@@ -19,7 +22,16 @@ public class ApiResponse<T> {
     public static class ApiError {
         private ErrorCode code;
         private String message;
-        private Object details;
+        private List<ApiErrorField> errors;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ApiErrorField {
+        private String field;
+        private String message;
     }
 
     @Data
@@ -41,12 +53,12 @@ public class ApiResponse<T> {
                 .build();
     }
 
-    public static ApiResponse<Void> error(ErrorCode code, String message, Object details, String requestId, String path) {
+    public static ApiResponse<Void> error(ErrorCode code, String message, List<ApiErrorField> errors, String requestId, String path) {
         return ApiResponse.<Void>builder()
                 .error(ApiError.builder()
                         .code(code)
                         .message(message)
-                        .details(details)
+                        .errors(errors)
                         .build())
                 .meta(ApiMeta.builder()
                         .requestId(requestId)
