@@ -9,6 +9,7 @@ Content-Type: application/json
 
 > {%
     client.global.set("auth_token", response.body.accessToken);
+    client.log("Token received: " + response.body.accessToken);
 %}
 
 ### 1. VALIDATION TEST (Expect 422 VALIDATION_ERROR)
@@ -35,3 +36,17 @@ Authorization: Bearer {{auth_token}}
 ### 3. NOT FOUND TEST (Expect 404 NOT_FOUND)
 GET http://localhost:8082/api/users/00000000-0000-0000-0000-000000000000
 Authorization: Bearer {{auth_token}}
+
+### 4. BUSINESS RULE TEST (Expect 422 BUSINESS_RULE_VIOLATION)
+POST http://localhost:8082/api/listings/00000000-0000-0000-0000-000000000000/unpublish
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+### 5. REQUEST-ID TEST (Check "meta" section in response)
+GET http://localhost:8082/api/users/me
+Authorization: Bearer {{auth_token}}
+X-Request-Id: custom-trace-id-123
+
+### 6. INTERNAL ERROR TEST (Expect 500 INTERNAL_ERROR)
+GET http://localhost:8082/api/users/me
+Authorization: Bearer broken-token-123

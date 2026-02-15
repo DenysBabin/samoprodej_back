@@ -6,6 +6,8 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import samoprodej.samoprodej.enums.ErrorCode;
+import samoprodej.samoprodej.exception.BusinessException;
 
 import java.security.KeyFactory;
 import java.security.PrivateKey;
@@ -85,7 +87,7 @@ public class JwtService {
             KeyFactory kf = KeyFactory.getInstance("RSA");
             return kf.generatePrivate(spec);
         } catch (Exception e) {
-            throw new RuntimeException("Invalid Private Key", e);
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Invalid JWT private key configuration");
         }
     }
 
@@ -100,7 +102,7 @@ public class JwtService {
             KeyFactory kf = KeyFactory.getInstance("RSA");
             return kf.generatePublic(spec);
         } catch (Exception e) {
-            throw new RuntimeException("Invalid Public Key", e);
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Invalid JWT public key configuration");
         }
     }
 }

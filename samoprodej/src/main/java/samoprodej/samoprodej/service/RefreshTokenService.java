@@ -5,6 +5,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import samoprodej.samoprodej.entity.RefreshToken;
 import samoprodej.samoprodej.entity.User;
+import samoprodej.samoprodej.enums.ErrorCode;
+import samoprodej.samoprodej.exception.BusinessException;
+import samoprodej.samoprodej.exception.NotFoundException;
 import samoprodej.samoprodej.repository.RefreshTokenRepository;
 import samoprodej.samoprodej.repository.UserRepository;
 
@@ -32,7 +35,7 @@ public class RefreshTokenService {
     @Transactional
     public String createRefreshToken(UUID userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found with id: " + userId));
 
         String rawToken = generateRandomToken();
         String tokenHash = hashToken(rawToken);
@@ -53,16 +56,16 @@ public class RefreshTokenService {
         String oldHash = hashToken(oldRawToken);
 
         RefreshToken oldToken = refreshTokenRepository.findByTokenHash(oldHash)
-                .orElseThrow(() -> new RuntimeException("Refresh token not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "Refresh token not found"));
 
         if (oldToken.isRevoked()) {
 
             revokeAllUserTokens(oldToken.getUser());
-            throw new RuntimeException("Refresh token reusing detected. All sessions revoked.");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "Refresh token reuse detected. All sessions revoked.");
         }
 
         if (oldToken.isExpired()) {
-            throw new RuntimeException("Refresh token expired");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "Refresh token expired");
         }
 
         oldToken.setRevokedAt(Instant.now());
@@ -88,9 +91,9 @@ public class RefreshTokenService {
     public User getUserFromToken(String rawToken) {
         String hash = hashToken(rawToken);
         RefreshToken token = refreshTokenRepository.findByTokenHash(hash)
-                .orElseThrow(() -> new RuntimeException("Token not found"));
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED, "Token not found"));
         if (!token.isActive()) {
-            throw new RuntimeException("Token inactive");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "Token inactive");
         }
         return token.getUser();
     }
@@ -126,7 +129,7 @@ public class RefreshTokenService {
             byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(hash);
         } catch (Exception e) {
-            throw new RuntimeException("Hashing failed", e);
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Token hashing failed");
         }
     }
 }

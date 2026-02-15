@@ -11,6 +11,7 @@ import samoprodej.samoprodej.dto.propertymedia.ReorderMediaRequest;
 import samoprodej.samoprodej.dto.propertymedia.UpdatePropertyMediaRequest;
 import samoprodej.samoprodej.entity.Property;
 import samoprodej.samoprodej.entity.PropertyMedia;
+import samoprodej.samoprodej.enums.ErrorCode;
 import samoprodej.samoprodej.enums.MediaType;
 import samoprodej.samoprodej.exception.BusinessException;
 import samoprodej.samoprodej.exception.NotFoundException;
@@ -77,7 +78,7 @@ public class PropertyMediaService {
         } catch (IOException e) {
             // Cleanup: delete the media record if file save failed
             mediaRepository.delete(savedMedia);
-            throw new RuntimeException("Failed to save file: " + e.getMessage(), e);
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Failed to save file: " + e.getMessage());
         }
     }
 
@@ -99,7 +100,7 @@ public class PropertyMediaService {
             boolean conflict = existing.stream()
                     .anyMatch(m -> m.getSortOrder().equals(sortOrderToCheck));
             if (conflict) {
-                throw new BusinessException("Sort order " + sortOrderToCheck + " already exists for this property");
+                throw new BusinessException(ErrorCode.PROPERTY_MEDIA_SORT_ORDER_TAKEN, "Sort order ...");
             }
             sortOrder = sortOrderToCheck;
         }
@@ -138,7 +139,7 @@ public class PropertyMediaService {
                 .collect(Collectors.toList());
 
         if (!propertyMediaIds.containsAll(mediaIds) || mediaIds.size() != propertyMediaIds.size()) {
-            throw new BusinessException("Some media IDs do not belong to this property");
+            throw new BusinessException(ErrorCode.BUSINESS_RULE_VIOLATION, "Some media IDs ...");
         }
 
         // Update sortOrder based on the order in the list
@@ -172,7 +173,7 @@ public class PropertyMediaService {
             boolean conflict = existing.stream()
                     .anyMatch(m -> !m.getId().equals(mediaId) && m.getSortOrder().equals(request.sortOrder()));
             if (conflict) {
-                throw new BusinessException("Sort order " + request.sortOrder() + " already exists for this property");
+                throw new BusinessException(ErrorCode.PROPERTY_MEDIA_SORT_ORDER_TAKEN, "Sort order ...");
             }
         }
 

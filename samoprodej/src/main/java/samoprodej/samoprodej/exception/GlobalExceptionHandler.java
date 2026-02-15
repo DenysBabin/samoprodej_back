@@ -66,6 +66,12 @@ public class GlobalExceptionHandler {
         return buildResponse(code, code.getDefaultMessage(), null, request);
     }
 
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAuthenticationException(org.springframework.security.core.AuthenticationException ex, HttpServletRequest request) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+        return buildResponse(ErrorCode.UNAUTHORIZED, "Invalid email or password", null, request);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleAllExceptions(Exception ex, HttpServletRequest request) {
         log.error("Unexpected error", ex);
@@ -85,11 +91,5 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         return new ResponseEntity<>(response, code.getHttpStatus());
-    }
-
-    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAuthenticationException(org.springframework.security.core.AuthenticationException ex, HttpServletRequest request) {
-        log.warn("Authentication failed: {}", ex.getMessage());
-        return buildResponse(ErrorCode.UNAUTHORIZED, "Invalid email or password", null, request);
     }
 }

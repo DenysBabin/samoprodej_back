@@ -1,5 +1,7 @@
 package samoprodej.samoprodej.exception;
 
+import jakarta.validation.Valid;
+import lombok.Data;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -8,6 +10,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -48,6 +52,17 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/ex/internal")
         public void throwInternal() {
             throw new RuntimeException("Unexpected crash");
+        }
+
+        @Data
+        static class ValidationDto {
+            @jakarta.validation.constraints.NotNull
+            private String field;
+        }
+
+        @PostMapping("/ex/validation")
+        public void throwValidation(@Valid @RequestBody ValidationDto dto) {
+            //
         }
     }
 

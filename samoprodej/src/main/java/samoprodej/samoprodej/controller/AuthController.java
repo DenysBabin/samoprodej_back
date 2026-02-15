@@ -3,7 +3,6 @@ package samoprodej.samoprodej.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,6 +23,7 @@ import samoprodej.samoprodej.enums.ErrorCode;
 import samoprodej.samoprodej.enums.Language;
 import samoprodej.samoprodej.enums.UserStatus;
 import samoprodej.samoprodej.exception.BusinessException;
+import samoprodej.samoprodej.exception.NotFoundException;
 import samoprodej.samoprodej.mapper.UserMapper;
 import samoprodej.samoprodej.repository.UserRepository;
 import samoprodej.samoprodej.service.JwtService;
@@ -57,7 +57,7 @@ public class AuthController {
         user.setAuthProvider(AuthProvider.LOCAL);
         try {
             user.setPreferredLang(Language.valueOf(request.getPreferredLang().toUpperCase()));
-        } catch (Exception e) {
+        } catch (IllegalArgumentException | NullPointerException e) {
             user.setPreferredLang(Language.CS);
         }
 
@@ -72,7 +72,8 @@ public class AuthController {
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
-        var user = userRepository.findByEmail(request.getEmail()).orElseThrow();
+        var user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new NotFoundException("User not found with email: " + request.getEmail()));
         return authenticateAndRespond(user);
     }
 
@@ -107,7 +108,7 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me(@AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "Authentication required");
         }
         var user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
