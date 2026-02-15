@@ -1,4 +1,4 @@
-package samoprodej.samoprodej.dto.propertymedia;
+package samoprodej.samoprodej.dto.property_media;
 
 import samoprodej.samoprodej.enums.MediaType;
 

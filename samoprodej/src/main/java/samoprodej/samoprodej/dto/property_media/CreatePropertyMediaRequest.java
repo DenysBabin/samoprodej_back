@@ -1,4 +1,4 @@
-package samoprodej.samoprodej.dto.propertymedia;
+package samoprodej.samoprodej.dto.property_media;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

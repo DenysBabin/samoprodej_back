@@ -1,10 +1,10 @@
 package samoprodej.samoprodej.mapper;
 
 import org.springframework.stereotype.Component;
-import samoprodej.samoprodej.dto.propertymedia.CreatePropertyMediaRequest;
-import samoprodej.samoprodej.dto.propertymedia.PropertyMediaDTO;
-import samoprodej.samoprodej.dto.propertymedia.PropertyMediaResponse;
-import samoprodej.samoprodej.dto.propertymedia.UpdatePropertyMediaRequest;
+import samoprodej.samoprodej.dto.property_media.CreatePropertyMediaRequest;
+import samoprodej.samoprodej.dto.property_media.PropertyMediaDTO;
+import samoprodej.samoprodej.dto.property_media.PropertyMediaResponse;
+import samoprodej.samoprodej.dto.property_media.UpdatePropertyMediaRequest;
 import samoprodej.samoprodej.entity.Property;
 import samoprodej.samoprodej.entity.PropertyMedia;
 

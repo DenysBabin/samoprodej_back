@@ -8,7 +8,7 @@ import samoprodej.samoprodej.dto.property.CreatePropertyRequest;
 import samoprodej.samoprodej.dto.property.PropertyDTO;
 import samoprodej.samoprodej.dto.property.PropertyResponse;
 import samoprodej.samoprodej.dto.property.UpdatePropertyRequest;
-import samoprodej.samoprodej.dto.propertymedia.PropertyMediaDTO;
+import samoprodej.samoprodej.dto.property_media.PropertyMediaDTO;
 import samoprodej.samoprodej.entity.Property;
 import samoprodej.samoprodej.entity.PropertyMedia;
 import samoprodej.samoprodej.mapper.PropertyMapper;
