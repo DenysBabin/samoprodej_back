@@ -171,7 +171,7 @@ class AuthControllerTest {
             mockMvc.perform(post(REGISTER_URL)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isConflict());
 
             verify(userRepository, never()).save(any(User.class));
         }

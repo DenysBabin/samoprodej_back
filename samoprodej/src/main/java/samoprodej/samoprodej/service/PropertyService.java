@@ -11,6 +11,7 @@ import samoprodej.samoprodej.dto.property.UpdatePropertyRequest;
 import samoprodej.samoprodej.dto.propertymedia.PropertyMediaDTO;
 import samoprodej.samoprodej.entity.Property;
 import samoprodej.samoprodej.entity.PropertyMedia;
+import samoprodej.samoprodej.exception.NotFoundException;
 import samoprodej.samoprodej.mapper.PropertyMapper;
 import samoprodej.samoprodej.mapper.PropertyMediaMapper;
 import samoprodej.samoprodej.repository.PropertyMediaRepository;
@@ -36,13 +37,11 @@ public class PropertyService {
     public PropertyResponse create(CreatePropertyRequest request) {
         log.info("Creating property for owner: {}", request.ownerUserId());
 
-        // Check if owner exists
         if (!userRepository.existsById(request.ownerUserId())) {
-            throw new RuntimeException("User not found with id: " + request.ownerUserId());
+            throw new NotFoundException("User not found with id: " + request.ownerUserId());
         }
 
         Property property = mapper.toEntity(request);
-
         if (property.getAddressText() == null || property.getAddressText().isEmpty()) {
             generateAddressText(property);
         }
@@ -63,7 +62,7 @@ public class PropertyService {
     @Transactional(readOnly = true)
     public PropertyResponse getById(UUID id) {
         Property property = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Property not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Property not found with id: " + id));
         return mapper.toResponse(property);
     }
 
@@ -77,7 +76,7 @@ public class PropertyService {
     public PropertyResponse update(UUID id, UpdatePropertyRequest request) {
         log.info("Updating property ID: {}", id);
         Property existing = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Property not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Property not found with id: " + id));
 
         mapper.updateEntityFromDto(request, existing);
 
@@ -93,11 +92,12 @@ public class PropertyService {
     public void delete(UUID id) {
         log.warn("Deleting property ID: {}", id);
         Property property = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Property not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Property not found with id: " + id));
         repository.delete(property);
     }
 
-    // Legacy methods for backward compatibility
+    // --- Legacy methods (kept for compatibility but updated exceptions) ---
+
     @Deprecated
     @SuppressWarnings("deprecation")
     public PropertyDTO createProperty(PropertyDTO dto) {
@@ -109,8 +109,6 @@ public class PropertyService {
         }
 
         Property saved = repository.save(property);
-        log.info("Property created with ID: {}", saved.getId());
-
         return mapper.toDto(saved);
     }
 
@@ -128,7 +126,7 @@ public class PropertyService {
     @SuppressWarnings("deprecation")
     public PropertyDTO getPropertyById(UUID id) {
         Property property = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Property not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Property not found with id: " + id));
         return mapper.toDto(property);
     }
 
@@ -145,7 +143,7 @@ public class PropertyService {
     public PropertyDTO updateProperty(UUID id, PropertyDTO dto) {
         log.info("Updating property ID: {}", id);
         Property existing = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Property not found"));
+                .orElseThrow(() -> new NotFoundException("Property not found"));
 
         mapper.updateEntityFromDto(dto, existing);
 
@@ -160,15 +158,17 @@ public class PropertyService {
     @Deprecated
     public void deleteProperty(UUID id) {
         log.warn("Deleting property ID: {}", id);
+        if (!repository.existsById(id)) {
+            throw new NotFoundException("Property not found with id: " + id);
+        }
         repository.deleteById(id);
     }
 
     @SuppressWarnings("deprecation")
     public PropertyMediaDTO addMedia(UUID propertyId, PropertyMediaDTO mediaDto) {
         log.info("Adding media to property ID: {}", propertyId);
-
         Property property = repository.findById(propertyId)
-                .orElseThrow(() -> new RuntimeException("Property not found with id: " + propertyId));
+                .orElseThrow(() -> new NotFoundException("Property not found with id: " + propertyId));
 
         PropertyMedia media = mediaMapper.toEntity(mediaDto, property);
         PropertyMedia saved = mediaRepository.save(media);
@@ -181,7 +181,7 @@ public class PropertyService {
     @Transactional(readOnly = true)
     public List<PropertyMediaDTO> getMediaForProperty(UUID propertyId) {
         if (!repository.existsById(propertyId)) {
-            throw new RuntimeException("Property not found with id: " + propertyId);
+            throw new NotFoundException("Property not found with id: " + propertyId);
         }
         return mediaRepository.findByPropertyIdOrderBySortOrderAsc(propertyId).stream()
                 .map(mediaMapper::toDto)
@@ -191,7 +191,7 @@ public class PropertyService {
     public void deleteMedia(UUID mediaId) {
         log.warn("Deleting media ID: {}", mediaId);
         if (!mediaRepository.existsById(mediaId)) {
-            throw new RuntimeException("Media not found with id: " + mediaId);
+            throw new NotFoundException("Media not found with id: " + mediaId);
         }
         mediaRepository.deleteById(mediaId);
     }

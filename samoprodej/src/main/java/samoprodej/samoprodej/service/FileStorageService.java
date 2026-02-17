@@ -6,9 +6,10 @@ import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import samoprodej.samoprodej.config.FileStorageConfig;
+import samoprodej.samoprodej.enums.ErrorCode;
 import samoprodej.samoprodej.enums.MediaType;
+import samoprodej.samoprodej.exception.BusinessException;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -131,17 +132,17 @@ public class FileStorageService {
 
     private void validateFile(MultipartFile file, MediaType mediaType) {
         if (file.isEmpty()) {
-            throw new RuntimeException("File is empty");
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "File is empty");
         }
 
         long maxSize = mediaType == MediaType.PHOTO ? config.getMaxSizePhoto() : config.getMaxSizeVideo();
         if (file.getSize() > maxSize) {
-            throw new RuntimeException("File size exceeds maximum allowed size: " + (maxSize / 1024 / 1024) + "MB");
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "File size exceeds maximum allowed size: ...");
         }
 
         String contentType = file.getContentType();
         if (!isValidFileType(contentType, mediaType)) {
-            throw new RuntimeException("Invalid file type for " + mediaType + ": " + contentType);
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Invalid file type for ...");
         }
     }
 

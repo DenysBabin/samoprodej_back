@@ -3,10 +3,8 @@ package samoprodej.samoprodej.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -21,8 +19,11 @@ import samoprodej.samoprodej.dto.auth.RegisterRequest;
 import samoprodej.samoprodej.dto.user.UserResponse;
 import samoprodej.samoprodej.entity.User;
 import samoprodej.samoprodej.enums.AuthProvider;
+import samoprodej.samoprodej.enums.ErrorCode;
 import samoprodej.samoprodej.enums.Language;
 import samoprodej.samoprodej.enums.UserStatus;
+import samoprodej.samoprodej.exception.BusinessException;
+import samoprodej.samoprodej.exception.NotFoundException;
 import samoprodej.samoprodej.mapper.UserMapper;
 import samoprodej.samoprodej.repository.UserRepository;
 import samoprodej.samoprodej.service.JwtService;
@@ -43,7 +44,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody @Valid RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            return ResponseEntity.badRequest().build();
+            throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS, "Email already registered");
         }
 
         var user = new User();
@@ -56,7 +57,7 @@ public class AuthController {
         user.setAuthProvider(AuthProvider.LOCAL);
         try {
             user.setPreferredLang(Language.valueOf(request.getPreferredLang().toUpperCase()));
-        } catch (Exception e) {
+        } catch (IllegalArgumentException | NullPointerException e) {
             user.setPreferredLang(Language.CS);
         }
 
@@ -67,41 +68,30 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody @Valid LoginRequest request) {
-        try {
-            authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-            );
-        } catch (BadCredentialsException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        var user = userRepository.findByEmail(request.getEmail()).orElseThrow();
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+        );
+
+        var user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new NotFoundException("User not found with email: " + request.getEmail()));
         return authenticateAndRespond(user);
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<AuthResponse> refresh(@CookieValue(name = "refresh_token") String refreshToken) {
-        try {
-            String newRefreshToken = refreshTokenService.rotateRefreshToken(refreshToken);
-            User user = refreshTokenService.getUserFromToken(newRefreshToken);
-            SecurityUser securityUser = new SecurityUser(user);
+        String newRefreshToken = refreshTokenService.rotateRefreshToken(refreshToken);
+        User user = refreshTokenService.getUserFromToken(newRefreshToken);
+        SecurityUser securityUser = new SecurityUser(user);
 
-            String newAccessToken = jwtService.generateAccessToken(securityUser, user.getId(), user.getRole().name());
+        String newAccessToken = jwtService.generateAccessToken(securityUser, user.getId(), user.getRole().name());
+        ResponseCookie cookie = buildRefreshCookie(newRefreshToken);
 
-            ResponseCookie cookie = buildRefreshCookie(newRefreshToken);
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                    .body(AuthResponse.builder()
-                            .accessToken(newAccessToken)
-                            .expiresInSec(900)
-                            .build());
-
-        } catch (Exception e) {
-            ResponseCookie cookie = buildRefreshCookie("");
-            return ResponseEntity.status(401)
-                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                    .build();
-        }
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(AuthResponse.builder()
+                        .accessToken(newAccessToken)
+                        .expiresInSec(900)
+                        .build());
     }
 
     @PostMapping("/logout")
@@ -118,7 +108,7 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me(@AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "Authentication required");
         }
         var user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
